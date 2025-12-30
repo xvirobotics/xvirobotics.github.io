@@ -17,7 +17,7 @@
 
         :root {
             --neon-cyan: #00f5ff;
-            --neon-magenta: #ff00ff;
+            --neon-blue: #0088ff;
             --neon-yellow: #f0ff00;
             --dark-bg: #0a0a0f;
             --darker-bg: #050508;
@@ -124,11 +124,11 @@
         }
 
         .logo span {
-            color: var(--neon-magenta);
+            color: var(--neon-blue);
             text-shadow:
-                0 0 10px var(--neon-magenta),
-                0 0 20px var(--neon-magenta),
-                0 0 40px var(--neon-magenta);
+                0 0 10px var(--neon-blue),
+                0 0 20px var(--neon-blue),
+                0 0 40px var(--neon-blue);
         }
 
         nav a {
@@ -203,7 +203,7 @@
         }
 
         .glitch::before {
-            color: var(--neon-magenta);
+            color: var(--neon-blue);
             animation: glitch-1 0.3s infinite;
             clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
             transform: translate(-2px, -2px);
@@ -333,8 +333,8 @@
             font-size: 1rem;
             padding: 15px 40px;
             background: transparent;
-            border: 2px solid var(--neon-magenta);
-            color: var(--neon-magenta);
+            border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan);
             text-transform: uppercase;
             letter-spacing: 3px;
             cursor: pointer;
@@ -352,7 +352,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.3), transparent);
+            background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.3), transparent);
             transition: left 0.5s;
         }
 
@@ -361,11 +361,11 @@
         }
 
         .cyber-btn:hover {
-            background: rgba(255, 0, 255, 0.1);
+            background: rgba(0, 245, 255, 0.1);
             box-shadow:
-                0 0 20px var(--neon-magenta),
-                inset 0 0 20px rgba(255, 0, 255, 0.1);
-            text-shadow: 0 0 10px var(--neon-magenta);
+                0 0 20px var(--neon-cyan),
+                inset 0 0 20px rgba(0, 245, 255, 0.1);
+            text-shadow: 0 0 10px var(--neon-cyan);
         }
 
         /* Vision Section */
@@ -392,7 +392,7 @@
         }
 
         .vision-card {
-            background: linear-gradient(135deg, rgba(0, 245, 255, 0.05), rgba(255, 0, 255, 0.05));
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.05), rgba(0, 136, 255, 0.05));
             border: 1px solid rgba(0, 245, 255, 0.2);
             padding: 40px;
             position: relative;
@@ -414,7 +414,7 @@
             left: 0;
             width: 100%;
             height: 2px;
-            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
         }
 
         .card-icon {
@@ -457,13 +457,13 @@
         }
 
         .contact-link {
-            color: var(--neon-magenta);
+            color: var(--neon-cyan);
             text-decoration: none;
             transition: all 0.3s;
         }
 
         .contact-link:hover {
-            text-shadow: 0 0 10px var(--neon-magenta);
+            text-shadow: 0 0 10px var(--neon-cyan);
         }
 
         /* Responsive */
@@ -507,7 +507,7 @@
 
         .circuit-right {
             right: 0;
-            border-left: 1px solid var(--neon-magenta);
+            border-left: 1px solid var(--neon-blue);
         }
 
         .circuit-left::before, .circuit-right::before {
@@ -527,7 +527,7 @@
 
         .circuit-right::before {
             left: -10px;
-            border-color: var(--neon-magenta);
+            border-color: var(--neon-blue);
         }
     </style>
 </head>
@@ -553,7 +553,6 @@
     <header>
         <div class="logo">ANDROID<span>16</span></div>
         <nav>
-            <a href="#about">About</a>
             <a href="#contact">Contact</a>
         </nav>
     </header>
@@ -572,27 +571,6 @@
             </div>
             <div class="cta-container">
                 <a href="mailto:contact@android16.ai" class="cyber-btn">Get in Touch</a>
-            </div>
-        </div>
-    </section>
-
-    <section class="section" id="about">
-        <h2 class="section-title">// Transmission Incoming</h2>
-        <div class="vision-grid">
-            <div class="vision-card">
-                <div class="card-icon">🧠</div>
-                <h3 class="card-title">Intelligence</h3>
-                <p class="card-desc">A new paradigm for humanoid cognition. Learning to walk before learning to work. Teaching machines to move through the world like humans do.</p>
-            </div>
-            <div class="vision-card">
-                <div class="card-icon">🤖</div>
-                <h3 class="card-title">Embodiment</h3>
-                <p class="card-desc">Where AI meets the physical realm. Bridging the gap between digital intelligence and real-world action. The future walks among us.</p>
-            </div>
-            <div class="vision-card">
-                <div class="card-icon">⚡</div>
-                <h3 class="card-title">Inception</h3>
-                <p class="card-desc">We're in the earliest stages of something transformative. Building the foundations for a new era. Join us in shaping what comes next.</p>
             </div>
         </div>
     </section>
