@@ -169,6 +169,24 @@
             font-weight: 600;
         }
 
+        .contact-btn {
+            margin-top: 50px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--circuit-glow);
+            text-decoration: none;
+            letter-spacing: 0.1em;
+            padding: 18px 40px;
+            border: 1px solid var(--circuit-glow);
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .contact-btn:hover {
+            background: var(--circuit-glow);
+            color: var(--circuit-bg);
+        }
+
         /* Circuit lines decoration */
         .circuit-lines {
             position: absolute;
@@ -447,79 +465,15 @@
 
         /* Footer */
         footer {
-            padding: 80px 60px;
-            border-top: 1px solid var(--circuit-line);
-            position: relative;
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            text-align: center;
             z-index: 1;
         }
 
-        .footer-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 60px;
-        }
-
-        .footer-left {
-            max-width: 450px;
-        }
-
-        .footer-logo {
-            height: 35px;
-            width: auto;
-            margin-bottom: 25px;
-            opacity: 0.8;
-        }
-
-        .footer-text {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            line-height: 1.8;
-        }
-
-        .footer-right {
-            text-align: right;
-        }
-
-        .contact-link {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 1.1rem;
-            color: var(--circuit-glow);
-            text-decoration: none;
-            letter-spacing: 0.1em;
-            transition: all 0.3s ease;
-            display: inline-block;
-            padding: 15px 30px;
-            border: 1px solid var(--circuit-glow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .contact-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: var(--circuit-glow);
-            transition: left 0.3s ease;
-            z-index: -1;
-        }
-
-        .contact-link:hover {
-            color: var(--circuit-bg);
-        }
-
-        .contact-link:hover::before {
-            left: 0;
-        }
-
         .copyright {
-            margin-top: 25px;
             font-family: 'Share Tech Mono', monospace;
             font-size: 0.75rem;
             color: var(--text-dim);
@@ -653,7 +607,6 @@
             </svg>
         </div>
         <nav class="nav-links">
-            <a href="#build" class="nav-link">Technology</a>
             <a href="mailto:floodsung@android16.ai" class="nav-link">Contact</a>
         </nav>
     </header>
@@ -732,151 +685,19 @@
             <circle cx="660" cy="45" r="2" fill="#0d0d0d"/>
         </svg>
 
-        <p class="hero-tagline">The Brain for Humanoid Robots</p>
+        <p class="hero-tagline">通用人形机器人大小脑</p>
         <p class="hero-subtitle">
-            Building intelligence for humanoid robots —
-            teaching machines to move freely in the real world.
+            让人形机器人可以帮我们做各种蓝领工作
         </p>
+
+        <a href="mailto:floodsung@android16.ai" class="contact-btn">floodsung@android16.ai</a>
     </section>
-
-    <section id="build" class="section">
-        <div class="section-header fade-in">
-            <span class="section-number">[ 01 ]</span>
-            <h2 class="section-title">What We Build</h2>
-            <div class="section-line"></div>
-        </div>
-
-        <div class="build-grid">
-            <div class="build-card fade-in fade-in-delay-1">
-                <div class="build-icon">
-                    <svg viewBox="0 0 60 60" fill="none">
-                        <rect x="5" y="5" width="50" height="50" stroke="#00d4ff" stroke-width="2" fill="none"/>
-                        <circle cx="30" cy="30" r="12" stroke="#00d4ff" stroke-width="2" fill="none"/>
-                        <line x1="30" y1="5" x2="30" y2="18" stroke="#00d4ff" stroke-width="2"/>
-                        <line x1="30" y1="42" x2="30" y2="55" stroke="#00d4ff" stroke-width="2"/>
-                        <line x1="5" y1="30" x2="18" y2="30" stroke="#00d4ff" stroke-width="2"/>
-                        <line x1="42" y1="30" x2="55" y2="30" stroke="#00d4ff" stroke-width="2"/>
-                    </svg>
-                </div>
-                <h3 class="build-title">Navigation Brain</h3>
-                <p class="build-desc">
-                    End-to-end vision-language models that see the world,
-                    understand the mission, and decide where to go next.
-                </p>
-            </div>
-
-            <div class="build-card fade-in fade-in-delay-2">
-                <div class="build-icon">
-                    <svg viewBox="0 0 60 60" fill="none">
-                        <path d="M30 5 L55 20 L55 45 L30 55 L5 45 L5 20 Z" stroke="#00ff88" stroke-width="2" fill="none"/>
-                        <circle cx="30" cy="30" r="8" fill="#00ff88" opacity="0.3"/>
-                        <line x1="30" y1="5" x2="30" y2="22" stroke="#00ff88" stroke-width="2"/>
-                        <line x1="5" y1="20" x2="22" y2="28" stroke="#00ff88" stroke-width="2"/>
-                        <line x1="55" y1="20" x2="38" y2="28" stroke="#00ff88" stroke-width="2"/>
-                    </svg>
-                </div>
-                <h3 class="build-title">Motion Controller</h3>
-                <p class="build-desc">
-                    Robust locomotion that handles stairs, slopes,
-                    wet surfaces, and unexpected obstacles with human-like stability.
-                </p>
-            </div>
-
-            <div class="build-card fade-in fade-in-delay-3">
-                <div class="build-icon">
-                    <svg viewBox="0 0 60 60" fill="none">
-                        <rect x="10" y="10" width="40" height="40" rx="5" stroke="#ffffff" stroke-width="2" fill="none"/>
-                        <line x1="10" y1="25" x2="50" y2="25" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
-                        <line x1="10" y1="35" x2="50" y2="35" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
-                        <line x1="25" y1="10" x2="25" y2="50" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
-                        <line x1="35" y1="10" x2="35" y2="50" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
-                        <circle cx="20" cy="20" r="3" fill="#ffffff"/>
-                        <circle cx="40" cy="30" r="3" fill="#ffffff"/>
-                        <circle cx="30" cy="40" r="3" fill="#ffffff"/>
-                    </svg>
-                </div>
-                <h3 class="build-title">Data Engine</h3>
-                <p class="build-desc">
-                    A scalable pipeline to collect real-world walking data
-                    from humans — the key to training robots that generalize.
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <section class="section vision-section">
-        <div class="section-header fade-in">
-            <span class="section-number">[ 02 ]</span>
-            <h2 class="section-title">Our Belief</h2>
-            <div class="section-line"></div>
-        </div>
-
-        <p class="vision-text fade-in">
-            <span class="dim">Humanoid robots will only become useful when they can</span>
-            <span class="highlight">move freely in the real world.</span>
-            <span class="dim">Before they can work, they must first</span>
-            <span class="highlight">learn to walk.</span>
-        </p>
-    </section>
-
-    <div class="quote-section fade-in">
-        <div class="quote-marks">"</div>
-        <p class="quote">
-            Named after Android 16 from Dragon Ball — a gentle,
-            nature-loving machine built for peace, not destruction.
-        </p>
-        <p class="quote-source">— The Origin of Our Name</p>
-    </div>
 
     <footer>
-        <div class="footer-content">
-            <div class="footer-left">
-                <svg class="footer-logo" viewBox="0 0 200 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <text x="0" y="24" font-family="Orbitron, sans-serif" font-size="20" font-weight="600" fill="white" letter-spacing="0.05em">ANDROID</text>
-                    <text x="115" y="24" font-family="Orbitron, sans-serif" font-size="20" font-weight="300" fill="white">16.ai</text>
-                </svg>
-                <p class="footer-text">
-                    We're at day zero, building the future of humanoid robot intelligence.
-                    If you share our vision, let's talk.
-                </p>
-            </div>
-            <div class="footer-right">
-                <a href="mailto:floodsung@android16.ai" class="contact-link">floodsung@android16.ai</a>
-                <p class="copyright">© 2025 Android16.ai — All rights reserved.</p>
-            </div>
-        </div>
+        <p class="copyright">© 2025 Android16.ai</p>
     </footer>
 
     <script>
-        // Intersection Observer for fade-in animations
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        });
-
-        document.querySelectorAll('.fade-in').forEach(el => {
-            observer.observe(el);
-        });
-
-        // Smooth scroll for navigation
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
     </script>
 </body>
 </html>
