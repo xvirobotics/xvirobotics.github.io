@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XVI Robotics | Humanoid Foundation Model</title>
-    <meta name="description" content="XVI Robotics - Building the Humanoid Foundation Model. Building robots that work for humanity.">
+    <meta name="description" content="XVI Robotics - Humanoid Foundation Model. Advancing the Robot Revolution Towards a Type II Civilization.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -16,12 +16,15 @@
         }
 
         :root {
-            --bg: #f8f8f8;
-            --text-primary: #1a1a1a;
-            --text-secondary: #555555;
-            --text-dim: #999999;
-            --accent: #2a2a2a;
-            --border: #e0e0e0;
+            --bg: #0a0a0f;
+            --bg-secondary: #12121a;
+            --glow-primary: #00d4ff;
+            --glow-secondary: #7b2fff;
+            --glow-tertiary: #00ff88;
+            --text-primary: #e8e8f0;
+            --text-secondary: rgba(232, 232, 240, 0.6);
+            --text-dim: rgba(232, 232, 240, 0.3);
+            --border: rgba(0, 212, 255, 0.15);
         }
 
         html {
@@ -29,11 +32,54 @@
         }
 
         body {
-            font-family: 'Rajdhani', sans-serif;
+            font-family: 'Rajdhani', 'Noto Sans SC', sans-serif;
             background: var(--bg);
             color: var(--text-primary);
             overflow-x: hidden;
             line-height: 1.6;
+        }
+
+        /* Animated Background Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Gradient overlays */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(123, 47, 255, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(0, 212, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(0, 255, 136, 0.04) 0%, transparent 50%);
+        }
+
+        /* Scan line effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
         }
 
         /* Header */
@@ -47,7 +93,9 @@
             justify-content: space-between;
             align-items: center;
             z-index: 100;
-            background: linear-gradient(180deg, rgba(248,248,248,0.95) 0%, rgba(248,248,248,0) 100%);
+            background: linear-gradient(180deg, rgba(10,10,15,0.9) 0%, rgba(10,10,15,0) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .logo-container {
@@ -62,7 +110,7 @@
 
         .nav-links {
             display: flex;
-            gap: 40px;
+            gap: 30px;
             align-items: center;
         }
 
@@ -84,16 +132,38 @@
             left: 0;
             width: 0;
             height: 1px;
-            background: var(--text-primary);
+            background: var(--glow-primary);
             transition: width 0.3s ease;
+            box-shadow: 0 0 8px var(--glow-primary);
         }
 
         .nav-link:hover {
-            color: var(--text-primary);
+            color: var(--glow-primary);
         }
 
         .nav-link:hover::after {
             width: 100%;
+        }
+
+        /* Language Switcher */
+        .lang-switch {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 6px 14px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .lang-switch:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: var(--glow-primary);
+            color: var(--glow-primary);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
         }
 
         /* Hero Section */
@@ -106,57 +176,225 @@
             text-align: center;
             padding: 120px 40px 80px;
             position: relative;
+            z-index: 10;
         }
 
         .hero-logo {
-            width: min(80vw, 500px);
+            width: min(70vw, 420px);
             height: auto;
             margin-bottom: 50px;
+            animation: logoFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Glowing ring behind logo */
+        .logo-glow {
+            position: relative;
+            display: inline-block;
+        }
+
+        .logo-glow::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 110%;
+            height: 200%;
+            background: radial-gradient(ellipse, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            animation: glowPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
 
         .hero-tagline {
             font-family: 'Orbitron', sans-serif;
-            font-size: clamp(1.2rem, 3vw, 2rem);
-            font-weight: 500;
-            letter-spacing: 0.3em;
-            color: var(--text-secondary);
+            font-size: clamp(1rem, 2.5vw, 1.6rem);
+            font-weight: 600;
+            letter-spacing: 0.35em;
+            color: var(--glow-primary);
             text-transform: uppercase;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.3s forwards;
         }
 
-        .hero-subtitle {
-            font-size: clamp(1.1rem, 2vw, 1.4rem);
-            color: var(--text-dim);
+        .hero-slogan {
+            font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+            color: var(--text-secondary);
             max-width: 700px;
             font-weight: 400;
             line-height: 1.8;
+            margin-bottom: 10px;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.6s forwards;
+        }
+
+        .hero-slogan-cn {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            color: var(--text-dim);
+            font-weight: 300;
+            letter-spacing: 0.15em;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.8s forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Decorative horizontal line */
+        .hero-divider {
+            width: 80px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glow-primary), transparent);
+            margin: 30px 0;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 1s forwards;
+        }
+
+        .hero-desc {
+            font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+            color: var(--text-dim);
+            max-width: 600px;
+            line-height: 1.9;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 1.1s forwards;
         }
 
         .contact-btn {
             margin-top: 50px;
             font-family: 'Share Tech Mono', monospace;
-            font-size: 1.1rem;
-            color: var(--text-primary);
+            font-size: 1rem;
+            color: var(--glow-primary);
             text-decoration: none;
-            letter-spacing: 0.1em;
-            padding: 18px 40px;
-            border: 1px solid var(--text-primary);
-            transition: all 0.3s ease;
+            letter-spacing: 0.15em;
+            padding: 16px 40px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            transition: all 0.4s ease;
             display: inline-block;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 1.3s forwards;
+        }
+
+        .contact-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+            transition: left 0.5s ease;
         }
 
         .contact-btn:hover {
-            background: var(--text-primary);
-            color: var(--bg);
+            border-color: var(--glow-primary);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.2), inset 0 0 30px rgba(0, 212, 255, 0.05);
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .contact-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Features Section */
+        .features {
+            position: relative;
+            z-index: 10;
+            padding: 80px 40px 100px;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            flex: 1;
+            min-width: 260px;
+            max-width: 340px;
+            padding: 40px 30px;
+            background: rgba(18, 18, 26, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glow-primary), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(0, 212, 255, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .feature-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            color: var(--glow-primary);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .feature-text {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
         }
 
         /* Footer */
         footer {
-            position: absolute;
-            bottom: 30px;
-            left: 0;
-            right: 0;
+            position: relative;
+            z-index: 10;
             text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(0, 212, 255, 0.06);
         }
 
         .copyright {
@@ -169,47 +407,329 @@
         /* Responsive */
         @media (max-width: 768px) {
             header {
-                padding: 15px 25px;
+                padding: 15px 20px;
             }
 
             .hero {
-                padding: 100px 25px 60px;
+                padding: 100px 20px 60px;
             }
 
             .hero-logo {
-                width: 90vw;
-                margin-bottom: 40px;
+                width: 80vw;
+                margin-bottom: 35px;
             }
 
             .nav-links {
+                gap: 15px;
+            }
+
+            .features {
+                padding: 40px 20px 60px;
                 gap: 20px;
             }
+
+            .feature-card {
+                min-width: 100%;
+                padding: 30px 24px;
+            }
         }
+
+        /* Language transition */
+        .lang-fade {
+            transition: opacity 0.3s ease;
+        }
+
+        [data-lang-en], [data-lang-cn] {
+            transition: opacity 0.3s ease;
+        }
+
+        html[lang="zh"] [data-lang-en] { display: none; }
+        html[lang="en"] [data-lang-cn] { display: none; }
     </style>
 </head>
 <body>
+    <canvas id="bg-canvas"></canvas>
+    <div class="bg-gradient"></div>
+    <div class="scanlines"></div>
+
     <header>
         <div class="logo-container">
-            <img src="logo.png" alt="XVI Robotics" class="header-logo">
+            <img src="logo-white.png" alt="XVI Robotics" class="header-logo">
         </div>
         <nav class="nav-links">
-            <a href="mailto:floodsung@xvirobotics.com" class="nav-link">Contact</a>
+            <a href="#features" class="nav-link" data-lang-en>About</a>
+            <a href="#features" class="nav-link" data-lang-cn>关于</a>
+            <a href="mailto:floodsung@xvirobotics.com" class="nav-link" data-lang-en>Contact</a>
+            <a href="mailto:floodsung@xvirobotics.com" class="nav-link" data-lang-cn>联系我们</a>
+            <button class="lang-switch" onclick="toggleLang()" aria-label="Switch language">
+                <span data-lang-en>中文</span>
+                <span data-lang-cn>EN</span>
+            </button>
         </nav>
     </header>
 
     <section class="hero">
-        <img src="logo.png" alt="XVI Robotics" class="hero-logo">
+        <div class="logo-glow">
+            <img src="logo-white.png" alt="XVI Robotics" class="hero-logo">
+        </div>
 
         <p class="hero-tagline">Humanoid Foundation Model</p>
-        <p class="hero-subtitle">
-            Building robots that work for humanity
+
+        <p class="hero-slogan" data-lang-en>
+            Advancing the Robot Revolution<br>Towards a Type II Civilization
+        </p>
+        <p class="hero-slogan" data-lang-cn>
+            推进机器人革命<br>让人类迈向二型文明
+        </p>
+
+        <div class="hero-divider"></div>
+
+        <p class="hero-desc" data-lang-en>
+            We build foundation models for humanoid robots — bridging intelligence and embodiment to unlock the next era of human civilization.
+        </p>
+        <p class="hero-desc" data-lang-cn>
+            我们构建人形机器人基座模型——连接智能与具身，开启人类文明的下一个时代。
         </p>
 
         <a href="mailto:floodsung@xvirobotics.com" class="contact-btn">floodsung@xvirobotics.com</a>
     </section>
 
+    <section class="features" id="features">
+        <div class="feature-card">
+            <span class="feature-icon">🧠</span>
+            <h3 class="feature-title" data-lang-en>Foundation Model</h3>
+            <h3 class="feature-title" data-lang-cn>基座模型</h3>
+            <p class="feature-text" data-lang-en>
+                Building large-scale foundation models that enable humanoid robots to understand, reason, and act in the physical world.
+            </p>
+            <p class="feature-text" data-lang-cn>
+                构建大规模基座模型，使人形机器人能够理解、推理并在物理世界中行动。
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <span class="feature-icon">🤖</span>
+            <h3 class="feature-title" data-lang-en>Embodied Intelligence</h3>
+            <h3 class="feature-title" data-lang-cn>具身智能</h3>
+            <p class="feature-text" data-lang-en>
+                Fusing perception, cognition, and motor control into a unified system that learns from real-world interaction.
+            </p>
+            <p class="feature-text" data-lang-cn>
+                将感知、认知和运动控制融合为统一系统，从真实世界交互中学习。
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <span class="feature-icon">🚀</span>
+            <h3 class="feature-title" data-lang-en>Type II Civilization</h3>
+            <h3 class="feature-title" data-lang-cn>二型文明</h3>
+            <p class="feature-text" data-lang-en>
+                Our mission: scale robotic labor to free humanity and propel our civilization to harness energy at a planetary scale.
+            </p>
+            <p class="feature-text" data-lang-cn>
+                我们的使命：规模化机器人劳动力，解放人类，推动文明走向行星级能源利用。
+            </p>
+        </div>
+    </section>
+
     <footer>
-        <p class="copyright">&copy; 2025 XVI Robotics</p>
+        <p class="copyright">&copy; 2025 XVI Robotics. All rights reserved.</p>
     </footer>
+
+    <script>
+    // ========== Language Switcher ==========
+    function toggleLang() {
+        const html = document.documentElement;
+        const current = html.getAttribute('lang');
+        html.setAttribute('lang', current === 'en' ? 'zh' : 'en');
+        // Save preference
+        localStorage.setItem('xvi-lang', html.getAttribute('lang'));
+    }
+
+    // Restore saved language
+    (function() {
+        const saved = localStorage.getItem('xvi-lang');
+        if (saved) {
+            document.documentElement.setAttribute('lang', saved);
+        } else {
+            // Auto-detect browser language
+            const browserLang = navigator.language || navigator.userLanguage;
+            if (browserLang && browserLang.startsWith('zh')) {
+                document.documentElement.setAttribute('lang', 'zh');
+            }
+        }
+    })();
+
+    // ========== Particle Network Background ==========
+    (function() {
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles, mouse;
+
+        const CONFIG = {
+            particleCount: 120,
+            maxDistance: 160,
+            particleSize: { min: 0.5, max: 2.5 },
+            speed: { min: 0.1, max: 0.4 },
+            colors: [
+                'rgba(0, 212, 255, ',   // cyan
+                'rgba(123, 47, 255, ',   // purple
+                'rgba(0, 255, 136, ',    // green
+            ],
+            mouseRadius: 200,
+            mouseForce: 0.02,
+        };
+
+        mouse = { x: -1000, y: -1000 };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        function createParticle() {
+            const colorBase = CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)];
+            return {
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * CONFIG.speed.max * 2,
+                vy: (Math.random() - 0.5) * CONFIG.speed.max * 2,
+                size: CONFIG.particleSize.min + Math.random() * (CONFIG.particleSize.max - CONFIG.particleSize.min),
+                colorBase: colorBase,
+                alpha: 0.3 + Math.random() * 0.5,
+                pulsePhase: Math.random() * Math.PI * 2,
+            };
+        }
+
+        function init() {
+            resize();
+            particles = [];
+            const count = Math.min(CONFIG.particleCount, Math.floor((width * height) / 8000));
+            for (let i = 0; i < count; i++) {
+                particles.push(createParticle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Update and draw particles
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+
+                // Pulse alpha
+                p.pulsePhase += 0.01;
+                const pulseAlpha = p.alpha + Math.sin(p.pulsePhase) * 0.15;
+
+                // Mouse interaction
+                const dx = mouse.x - p.x;
+                const dy = mouse.y - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < CONFIG.mouseRadius) {
+                    const force = (1 - dist / CONFIG.mouseRadius) * CONFIG.mouseForce;
+                    p.vx += dx * force;
+                    p.vy += dy * force;
+                }
+
+                // Damping
+                p.vx *= 0.99;
+                p.vy *= 0.99;
+
+                // Ensure minimum speed
+                const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+                if (speed < CONFIG.speed.min) {
+                    const angle = Math.atan2(p.vy, p.vx);
+                    p.vx = Math.cos(angle) * CONFIG.speed.min;
+                    p.vy = Math.sin(angle) * CONFIG.speed.min;
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Wrap around edges
+                if (p.x < -20) p.x = width + 20;
+                if (p.x > width + 20) p.x = -20;
+                if (p.y < -20) p.y = height + 20;
+                if (p.y > height + 20) p.y = -20;
+
+                // Draw particle
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.colorBase + Math.max(0, pulseAlpha).toFixed(2) + ')';
+                ctx.fill();
+
+                // Draw glow
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+                const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
+                grd.addColorStop(0, p.colorBase + (pulseAlpha * 0.3).toFixed(2) + ')');
+                grd.addColorStop(1, p.colorBase + '0)');
+                ctx.fillStyle = grd;
+                ctx.fill();
+
+                // Draw connections
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const ddx = p.x - p2.x;
+                    const ddy = p.y - p2.y;
+                    const d = Math.sqrt(ddx * ddx + ddy * ddy);
+
+                    if (d < CONFIG.maxDistance) {
+                        const lineAlpha = (1 - d / CONFIG.maxDistance) * 0.15;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = 'rgba(0, 212, 255, ' + lineAlpha.toFixed(3) + ')';
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            resize();
+            // Re-adjust particle count
+            const targetCount = Math.min(CONFIG.particleCount, Math.floor((width * height) / 8000));
+            while (particles.length < targetCount) particles.push(createParticle());
+            while (particles.length > targetCount) particles.pop();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = -1000;
+            mouse.y = -1000;
+        });
+
+        init();
+        animate();
+    })();
+
+    // ========== Scroll Reveal for Feature Cards ==========
+    (function() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card').forEach((card, i) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `all 0.6s ease ${i * 0.15}s`;
+            observer.observe(card);
+        });
+    })();
+    </script>
 </body>
 </html>
