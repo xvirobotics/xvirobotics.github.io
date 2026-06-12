@@ -56,7 +56,7 @@
       B_THIGH_L = 5, B_SHIN_L = 6, B_FOOT_L = 7,
       B_THIGH_R = 8, B_SHIN_R = 9, B_FOOT_R = 10,
       B_UARM_L = 11, B_FARM_L = 12, B_UARM_R = 13, B_FARM_R = 14,
-      NBONES = 15;
+      B_HAND_L = 15, B_HAND_R = 16, NBONES = 17;
   // sphere ids
   var S_HEAD = 0, S_HAND_L = 1, S_HAND_R = 2,
       S_SH_L = 3, S_SH_R = 4, S_KNEE_L = 5, S_KNEE_R = 6, NSPH = 7;
@@ -115,8 +115,11 @@
       capsule(g[3], 150, 4.6, 4.0);
       capsule(g[4], 140, 3.8, 3.2);
     }
-    sphere(S_HAND_L, 70, 3.8);
-    sphere(S_HAND_R, 70, 3.8);
+    // wrist joints + flat paddle hands (palm and fingers past the wrist)
+    sphere(S_HAND_L, 45, 3.2);
+    sphere(S_HAND_R, 45, 3.2);
+    capsule(B_HAND_L, 95, 3.8, 2.0, 1.15, 0.5);
+    capsule(B_HAND_R, 95, 3.8, 2.0, 1.15, 0.5);
     // visor: a steady bright cyan band wrapping the front of the helmet
     for (var vi = 0; vi < spts.length; vi++) {
       var vp = spts[vi];
@@ -374,7 +377,7 @@
       return ax;
     }
 
-    function armChain(uarmId, farmId, handSi, shSi, shX, shY, shZ, th, side) {
+    function armChain(uarmId, farmId, handB, handSi, shSi, shX, shY, shZ, th, side) {
       // arms carried slightly out from the body with bent elbows — the
       // balance posture of someone walking in low gravity
       var th2 = th * 1.05 + 0.85;
@@ -386,6 +389,11 @@
       var hx = ex + 26 * fx0 / l1, hy = eyy + 26 * fy0 / l1, hz = ez + 26 * fz0 / l1;
       setBone(uarmId, shX, shY, shZ, ex, eyy, ez);
       setBone(farmId, ex, eyy, ez, hx, hy, hz);
+      // hand: paddle continuing past the wrist, curled slightly inward
+      var th3 = th2 + 0.32;
+      var gx0 = Math.sin(th3), gy0 = -Math.cos(th3), gz0 = side * 0.05;
+      var l2 = Math.sqrt(gx0 * gx0 + gy0 * gy0 + gz0 * gz0);
+      setBone(handB, hx, hy, hz, hx + 11.5 * gx0 / l2, hy + 11.5 * gy0 / l2, hz + 11.5 * gz0 / l2, true);
       sph[shSi].x = shX; sph[shSi].y = shY + 1.5; sph[shSi].z = shZ + side * 1.5;
       sph[handSi].x = hx; sph[handSi].y = hy; sph[handSi].z = hz;
     }
@@ -422,8 +430,8 @@
 
       var thL = -0.35 * Math.cos(TAU * phase);
       var thR = 0.35 * Math.cos(TAU * phase);
-      armChain(B_UARM_L, B_FARM_L, S_HAND_L, S_SH_L, chestX + shTw, hipY + 59.5, -18 + sway * 0.5, thL, -1);
-      armChain(B_UARM_R, B_FARM_R, S_HAND_R, S_SH_R, chestX - shTw, hipY + 59.5, 18 + sway * 0.5, thR, 1);
+      armChain(B_UARM_L, B_FARM_L, B_HAND_L, S_HAND_L, S_SH_L, chestX + shTw, hipY + 59.5, -18 + sway * 0.5, thL, -1);
+      armChain(B_UARM_R, B_FARM_R, B_HAND_R, S_HAND_R, S_SH_R, chestX - shTw, hipY + 59.5, 18 + sway * 0.5, thR, 1);
 
       pose.headX = headX; pose.headY = headY; pose.headZ = headZ;
       pose.chestX = chestX; pose.chestY = chestY; pose.chestZ = chestZ;
