@@ -56,9 +56,10 @@
       B_THIGH_L = 5, B_SHIN_L = 6, B_FOOT_L = 7,
       B_THIGH_R = 8, B_SHIN_R = 9, B_FOOT_R = 10,
       B_UARM_L = 11, B_FARM_L = 12, B_UARM_R = 13, B_FARM_R = 14,
-      B_ANT = 15, NBONES = 16;
+      NBONES = 15;
   // sphere ids
-  var S_HEAD = 0, S_HAND_L = 1, S_HAND_R = 2, NSPH = 3;
+  var S_HEAD = 0, S_HAND_L = 1, S_HAND_R = 2,
+      S_SH_L = 3, S_SH_R = 4, S_KNEE_L = 5, S_KNEE_R = 6, NSPH = 7;
 
   function buildCloud() {
     var pts = [], spts = [];
@@ -90,26 +91,39 @@
         });
       }
     }
-    // torso (elliptical: wide across shoulders/hips = u(z) axis, slim front-back = v(x) axis)
-    capsule(B_SPINE1, 430, 13.5, 15.5, 1.18, 0.72);
-    capsule(B_SPINE2, 540, 15.5, 19.5, 1.22, 0.68);
-    capsule(B_HIPBAR, 150, 6.8, 6.8);
-    capsule(B_SHBAR, 200, 7.6, 7.6);
-    capsule(B_NECK, 55, 4.4, 4.4);
-    sphere(S_HEAD, 390, 10.2);
-    capsule(B_ANT, 24, 0.9, 0.7);
+    // Optimus-like proportions: broad chest plate tapering to a narrow waist
+    // (elliptical: wide across shoulders/hips = u(z) axis, slim front-back = v(x) axis)
+    capsule(B_SPINE1, 360, 10.5, 13.0, 1.02, 0.70);
+    capsule(B_SPINE2, 560, 13.0, 19.0, 1.30, 0.62);
+    capsule(B_HIPBAR, 150, 7.2, 7.2);
+    capsule(B_SHBAR, 190, 7.0, 7.0);
+    capsule(B_NECK, 60, 4.8, 4.8);
+    sphere(S_HEAD, 360, 8.8);
+    sphere(S_SH_L, 80, 6.8);
+    sphere(S_SH_R, 80, 6.8);
+    sphere(S_KNEE_L, 55, 5.2);
+    sphere(S_KNEE_R, 55, 5.2);
     var L = [B_THIGH_L, B_SHIN_L, B_FOOT_L, B_UARM_L, B_FARM_L],
         R = [B_THIGH_R, B_SHIN_R, B_FOOT_R, B_UARM_R, B_FARM_R];
     for (var s2 = 0; s2 < 2; s2++) {
       var g = s2 === 0 ? L : R;
-      capsule(g[0], 235, 7.2, 5.6);
-      capsule(g[1], 205, 5.2, 4.3);
-      capsule(g[2], 95, 4.0, 3.2);
-      capsule(g[3], 175, 5.6, 4.6);
-      capsule(g[4], 150, 4.5, 3.8);
+      capsule(g[0], 235, 7.8, 5.4);
+      capsule(g[1], 205, 6.0, 3.6);
+      capsule(g[2], 100, 4.2, 3.4);
+      capsule(g[3], 165, 5.0, 4.2);
+      capsule(g[4], 145, 4.2, 3.6);
     }
     sphere(S_HAND_L, 70, 4.3);
     sphere(S_HAND_R, 70, 4.3);
+    // visor: a steady bright cyan band wrapping the front of the helmet
+    for (var vi = 0; vi < spts.length; vi++) {
+      var vp = spts[vi];
+      if (vp.si === S_HEAD && vp.nx > 0.42 && vp.ny > -0.42 && vp.ny < 0.12) {
+        vp.c = 1;
+        vp.s = Math.min(1.6, vp.s * 1.45);
+        vp.vis = 1;
+      }
+    }
     return { pts: pts, spts: spts };
   }
 
@@ -119,14 +133,14 @@
     if (y < 12) return 17;
     if (y < 48) return 15;
     if (y < 86) return 17;
-    if (y < 122) return 19;
-    if (y < 152) return 26;
-    if (y < 176) return 12.5;
+    if (y < 116) return 16;
+    if (y < 152) return 27;
+    if (y < 178) return 12;
     return 0;
   }
 
-  /* ---------- gait ---------- */
-  var CYC = 1.6, STEP = 30, LIFT = 13, STANCE = 0.58;
+  /* ---------- gait: slow lunar lope — long floaty strides, high lift ---------- */
+  var CYC = 2.0, STEP = 34, LIFT = 17, STANCE = 0.5;
   // stance foot travels STEP over STANCE*CYC seconds; terrain must scroll at the
   // same speed or planted feet skate against the ground
   var SPEED = STEP / (STANCE * CYC);
@@ -141,7 +155,9 @@
       var u2 = (lp - STANCE) / (1 - STANCE);
       var e = u2 * u2 * (3 - 2 * u2);
       out.x = -STEP / 2 + STEP * e;
-      out.y = LIFT * Math.sin(Math.PI * u2);
+      // flattened sine = hang time at the top of the swing (low gravity)
+      var sl = Math.sin(Math.PI * u2);
+      out.y = LIFT * Math.sqrt(sl > 0 ? sl : 0);
       out.air = 1;
     }
   }
@@ -192,7 +208,7 @@
       [156, 194, 220], // 0 steel blue
       [126, 224, 255], // 1 brand cyan
       [240, 250, 255], // 2 white
-      [255, 110, 95],  // 3 beacon red
+      [255, 110, 95],  // 3 unused (kept so earth/terrain indices 4-6 stay stable)
       [96, 165, 255],  // 4 earth ocean
       [125, 205, 170], // 5 earth land
       [186, 199, 212]  // 6 moon dust grey
@@ -268,10 +284,12 @@
       canvas.width = W * dpr; canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       cx = W * (W > 880 ? 0.63 : 0.5);
-      cy = H * 0.52;
+      // on phones the hero text is a compact block at the top, so frame the
+      // walker lower and a bit smaller to keep the full body + ground visible
+      cy = H * (W > 880 ? 0.52 : 0.63);
       f = H * 1.06;
       fs = Math.min(W, H) * 0.95;
-      dist = W > 880 ? 365 : 440;
+      dist = W > 880 ? 365 : 500;
       setupTerrain();
       kick();
     }
@@ -319,7 +337,7 @@
     var FOOT = { x: 0, y: 0, air: 0 };
     var THIGH = 44, SHIN = 41;
 
-    function legIK(thighId, shinId, footId, hipX, hipY, hipZ, lp, sideZ, t) {
+    function legIK(thighId, shinId, footId, kneeSi, hipX, hipY, hipZ, lp, sideZ, t) {
       footTrack(lp, FOOT);
       var ax = FOOT.x, ay = 7 + FOOT.y, az = sideZ;
       var dx = ax - hipX, dy = ay - hipY, dz = az - hipZ;
@@ -344,22 +362,26 @@
       var kz = hipZ + (iz * cosA + pz2 * sinA) * THIGH;
       setBone(thighId, hipX, hipY, hipZ, kx, ky, kz);
       setBone(shinId, kx, ky, kz, ax, ay, az);
+      sph[kneeSi].x = kx; sph[kneeSi].y = ky; sph[kneeSi].z = kz;
       // foot: ankle to toe, toe dips slightly during swing
       var toeDrop = FOOT.air * 2.6;
       setBone(footId, ax, ay - 2.2, az, ax + 15.2, Math.max(2.0, ay - 5.2 - toeDrop), az, true);
       return ax;
     }
 
-    function armChain(uarmId, farmId, handSi, shX, shY, shZ, th, side) {
-      var th2 = th * 1.15 + 0.55;
-      var ux0 = Math.sin(th), uy0 = -Math.cos(th), uz0 = side * 0.14;
+    function armChain(uarmId, farmId, handSi, shSi, shX, shY, shZ, th, side) {
+      // arms carried slightly out from the body with bent elbows — the
+      // balance posture of someone walking in low gravity
+      var th2 = th * 1.05 + 0.85;
+      var ux0 = Math.sin(th), uy0 = -Math.cos(th), uz0 = side * 0.24;
       var l0 = Math.sqrt(ux0 * ux0 + uy0 * uy0 + uz0 * uz0);
-      var ex = shX + 27 * ux0 / l0, eyy = shY + 27 * uy0 / l0, ez = shZ + 27 * uz0 / l0;
-      var fx0 = Math.sin(th2), fy0 = -Math.cos(th2), fz0 = side * 0.05;
+      var ex = shX + 26 * ux0 / l0, eyy = shY + 26 * uy0 / l0, ez = shZ + 26 * uz0 / l0;
+      var fx0 = Math.sin(th2), fy0 = -Math.cos(th2), fz0 = side * 0.08;
       var l1 = Math.sqrt(fx0 * fx0 + fy0 * fy0 + fz0 * fz0);
-      var hx = ex + 25 * fx0 / l1, hy = eyy + 25 * fy0 / l1, hz = ez + 25 * fz0 / l1;
+      var hx = ex + 24 * fx0 / l1, hy = eyy + 24 * fy0 / l1, hz = ez + 24 * fz0 / l1;
       setBone(uarmId, shX, shY, shZ, ex, eyy, ez);
       setBone(farmId, ex, eyy, ez, hx, hy, hz);
+      sph[shSi].x = shX; sph[shSi].y = shY + 1.5; sph[shSi].z = shZ + side * 1.5;
       sph[handSi].x = hx; sph[handSi].y = hy; sph[handSi].z = hz;
     }
 
@@ -367,33 +389,33 @@
 
     function computePose(t) {
       var phase = reduce ? 0.18 : (t / CYC) % 1;
-      var bob = 2.2 * Math.sin(2 * TAU * phase + 0.7);
+      // lunar lope: pronounced vertical bounce, forward astronaut lean
+      var bob = 3.4 * Math.sin(2 * TAU * phase + 0.7);
       var sway = -2.6 * Math.sin(TAU * phase);
-      var lean = 5;
-      var hipTw = 2.5 * Math.cos(TAU * phase);
-      var shTw = -1.9 * Math.cos(TAU * phase);
+      var lean = 8;
+      var hipTw = 2.8 * Math.cos(TAU * phase);
+      var shTw = -2.1 * Math.cos(TAU * phase);
 
-      var pelY = 86 + bob;
-      var waistX = lean * 0.45, waistY = 118 + bob * 0.92, waistZ = sway * 0.8;
-      var chestX = lean * 0.9, chestY = 142 + bob * 0.85, chestZ = sway * 0.55;
-      var headX = lean * 1.15, headY = 164.5 + bob * 0.8, headZ = sway * 0.38;
+      var pelY = 88 + bob;
+      var waistX = lean * 0.45, waistY = 116 + bob * 0.92, waistZ = sway * 0.8;
+      var chestX = lean * 0.9, chestY = 140 + bob * 0.85, chestZ = sway * 0.55;
+      var headX = lean * 1.1, headY = 165 + bob * 0.8, headZ = sway * 0.38;
 
       setBone(B_SPINE1, 0, pelY - 2, sway, waistX, waistY, waistZ);
       setBone(B_SPINE2, waistX, waistY, waistZ, chestX, chestY, chestZ);
-      setBone(B_NECK, chestX * 1.05, 150 + bob * 0.83, sway * 0.45, headX, headY - 7, headZ);
+      setBone(B_NECK, chestX * 1.05, 149 + bob * 0.83, sway * 0.45, headX, headY - 6.5, headZ);
       setBone(B_HIPBAR, hipTw, pelY - 3.5, -11 + sway, -hipTw, pelY - 3.5, 11 + sway, true);
-      setBone(B_SHBAR, chestX + shTw, 143.5 + bob * 0.85, -24.5 + sway * 0.5, chestX - shTw, 143.5 + bob * 0.85, 24.5 + sway * 0.5, true);
-      setBone(B_ANT, headX + 1, headY + 8.5, headZ, headX + 2.8, headY + 19, headZ);
+      setBone(B_SHBAR, chestX + shTw, 142 + bob * 0.85, -27 + sway * 0.5, chestX - shTw, 142 + bob * 0.85, 27 + sway * 0.5, true);
       sph[S_HEAD].x = headX; sph[S_HEAD].y = headY; sph[S_HEAD].z = headZ;
 
       var lpL = phase, lpR = (phase + 0.5) % 1;
-      legIK(B_THIGH_L, B_SHIN_L, B_FOOT_L, hipTw, pelY - 3.5, -11 + sway * 0.6, lpL, -11, t);
-      legIK(B_THIGH_R, B_SHIN_R, B_FOOT_R, -hipTw, pelY - 3.5, 11 + sway * 0.6, lpR, 11, t);
+      legIK(B_THIGH_L, B_SHIN_L, B_FOOT_L, S_KNEE_L, hipTw, pelY - 3.5, -11 + sway * 0.6, lpL, -11, t);
+      legIK(B_THIGH_R, B_SHIN_R, B_FOOT_R, S_KNEE_R, -hipTw, pelY - 3.5, 11 + sway * 0.6, lpR, 11, t);
 
-      var thL = -0.48 * Math.cos(TAU * phase);
-      var thR = 0.48 * Math.cos(TAU * phase);
-      armChain(B_UARM_L, B_FARM_L, S_HAND_L, chestX + shTw, 142 + bob * 0.85, -26.5 + sway * 0.5, thL, -1);
-      armChain(B_UARM_R, B_FARM_R, S_HAND_R, chestX - shTw, 142 + bob * 0.85, 26.5 + sway * 0.5, thR, 1);
+      var thL = -0.40 * Math.cos(TAU * phase);
+      var thR = 0.40 * Math.cos(TAU * phase);
+      armChain(B_UARM_L, B_FARM_L, S_HAND_L, S_SH_L, chestX + shTw, 140.5 + bob * 0.85, -28.5 + sway * 0.5, thL, -1);
+      armChain(B_UARM_R, B_FARM_R, S_HAND_R, S_SH_R, chestX - shTw, 140.5 + bob * 0.85, 28.5 + sway * 0.5, thR, 1);
 
       pose.headX = headX; pose.headY = headY; pose.headZ = headZ;
       pose.chestX = chestX; pose.chestY = chestY; pose.chestZ = chestZ;
@@ -630,12 +652,14 @@
       }
       var sw = silWidth(scanY);
       if (sw > 0) {
+        // the leaned figure carries its head forward — track the ring center
+        var rcx = scanY > 152 ? 8 : 2;
         ctx.strokeStyle = fill(1, 0.15);
         ctx.beginPath();
         started = false;
         for (var sg2 = 0; sg2 <= 48; sg2++) {
           var sa = sg2 / 48 * TAU;
-          if (project(Math.cos(sa) * sw + 2, scanY, Math.sin(sa) * sw * 0.75, P)) {
+          if (project(Math.cos(sa) * sw + rcx, scanY, Math.sin(sa) * sw * 0.75, P)) {
             if (started) ctx.lineTo(P[0], P[1]); else { ctx.moveTo(P[0], P[1]); started = true; }
           } else started = false;
         }
@@ -683,7 +707,9 @@
         var lt2 = 0.5 + (hdot2 > 0 ? 0.42 * hdot2 : 0) + (ldot2 > 0 ? 0.22 * ldot2 : 0);
         var dyS2 = (wy3 - scanY) / 8;
         var boost2 = dyS2 > -4 && dyS2 < 4 ? Math.exp(-dyS2 * dyS2) * 0.5 : 0;
-        var al3 = dep2 * (0.50 + 0.28 * Math.sin(t1 * p2.sp * 1.3 + p2.ph)) * lt2 + boost2;
+        var al3 = p2.vis
+          ? dep2 * (0.80 + 0.12 * Math.sin(t1 * 1.8 + p2.ph)) + boost2
+          : dep2 * (0.50 + 0.28 * Math.sin(t1 * p2.sp * 1.3 + p2.ph)) * lt2 + boost2;
         if (al3 <= 0.02) continue;
         var size2 = p2.s * (f / P[2]) * 0.56;
         if (size2 < 1) size2 = 1;
@@ -691,9 +717,9 @@
         ctx.fillRect(P[0] - size2 / 2, P[1] - size2 / 2, size2, size2);
       }
 
-      /* chest light (breathing) + antenna beacon (blink) */
+      /* chest light (breathing) */
       var pulse = 0.35 + 0.4 * Math.sin(t1 * 2.4);
-      if (project(pose.chestX + 14, pose.chestY - 7, pose.chestZ, P)) {
+      if (project(pose.chestX + 11, pose.chestY - 7, pose.chestZ, P)) {
         var pr2 = 1.6 * f / P[2];
         var cg = ctx.createRadialGradient(P[0], P[1], 0, P[0], P[1], pr2 * 3);
         cg.addColorStop(0, 'rgba(200,240,255,' + (0.5 + pulse * 0.4).toFixed(3) + ')');
@@ -702,13 +728,6 @@
         ctx.fillStyle = cg;
         ctx.fillRect(P[0] - pr2 * 3, P[1] - pr2 * 3, pr2 * 6, pr2 * 6);
       }
-      var blink = reduce ? 1 : (Math.sin(t1 * 5.2) > 0.55 ? 1 : 0);
-      if (blink && project(pose.headX + 3, pose.headY + 20, pose.headZ, P)) {
-        var br = 2 * f / P[2];
-        ctx.fillStyle = fill(3, 0.85);
-        ctx.fillRect(P[0] - br / 2, P[1] - br / 2, br, br);
-      }
-
       /* low-gravity dust */
       for (var di = dust.length - 1; di >= 0; di--) {
         var dp = dust[di];

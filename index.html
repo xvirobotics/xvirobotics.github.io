@@ -266,9 +266,43 @@
             display: none;
         }
 
+        /* phones/tablets: compact text block pinned to the top so the full
+           walking figure owns the lower two-thirds of the screen */
         @media (max-width: 880px) {
             h1, .summary {
                 text-shadow: 0 0 18px rgba(4, 7, 11, 0.9), 0 2px 8px rgba(4, 7, 11, 0.7);
+            }
+
+            .hero {
+                top: 92px;
+                transform: none;
+                max-width: min(560px, 90vw);
+            }
+
+            .eyebrow {
+                margin-bottom: 14px;
+            }
+
+            .eyebrow-text {
+                font-size: 10px;
+            }
+
+            h1 {
+                font-size: clamp(24px, 6.2vw, 40px);
+                margin-bottom: 12px;
+            }
+
+            .summary {
+                font-size: 13px;
+                line-height: 1.6;
+                margin-bottom: 18px;
+                max-width: 420px;
+            }
+
+            .cta {
+                font-size: 12px;
+                padding: 11px 16px;
+                gap: 10px;
             }
         }
 
@@ -327,6 +361,33 @@
             .footer {
                 padding-top: 16px;
                 padding-bottom: 16px;
+            }
+        }
+
+        /* landscape phones: re-center a minimal text block (the pinned-top
+           mobile layout would overflow a ~360px-high viewport) */
+        @media (max-width: 880px) and (max-height: 560px) {
+            .hero {
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+            .eyebrow {
+                margin-bottom: 10px;
+            }
+
+            h1 {
+                font-size: clamp(20px, 4.6vw, 30px);
+                margin-bottom: 10px;
+            }
+
+            .summary {
+                display: none;
+            }
+
+            .cta {
+                font-size: 11px;
+                padding: 9px 14px;
             }
         }
 
