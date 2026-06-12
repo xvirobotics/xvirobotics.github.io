@@ -91,30 +91,32 @@
         });
       }
     }
-    // Optimus-like proportions: broad chest plate tapering to a narrow waist
+    // Unitree H2 proportions, derived from the official URDF joint origins
+    // (~98 scene units per meter): slim rounded torso, narrow shoulders,
+    // short thighs with long slender shins, feet tracking inside the hips
     // (elliptical: wide across shoulders/hips = u(z) axis, slim front-back = v(x) axis)
-    capsule(B_SPINE1, 360, 10.5, 13.0, 1.02, 0.70);
-    capsule(B_SPINE2, 560, 13.0, 19.0, 1.30, 0.62);
-    capsule(B_HIPBAR, 150, 7.2, 7.2);
-    capsule(B_SHBAR, 190, 7.0, 7.0);
-    capsule(B_NECK, 60, 4.8, 4.8);
-    sphere(S_HEAD, 360, 8.8);
-    sphere(S_SH_L, 80, 6.8);
-    sphere(S_SH_R, 80, 6.8);
-    sphere(S_KNEE_L, 55, 5.2);
-    sphere(S_KNEE_R, 55, 5.2);
+    capsule(B_SPINE1, 340, 12.0, 10.5, 1.05, 0.62);
+    capsule(B_SPINE2, 520, 10.5, 14.5, 1.15, 0.60);
+    capsule(B_HIPBAR, 150, 6.5, 6.5);
+    capsule(B_SHBAR, 170, 6.0, 6.0);
+    capsule(B_NECK, 55, 3.8, 3.8);
+    sphere(S_HEAD, 350, 8.6);
+    sphere(S_SH_L, 70, 5.5);
+    sphere(S_SH_R, 70, 5.5);
+    sphere(S_KNEE_L, 55, 4.6);
+    sphere(S_KNEE_R, 55, 4.6);
     var L = [B_THIGH_L, B_SHIN_L, B_FOOT_L, B_UARM_L, B_FARM_L],
         R = [B_THIGH_R, B_SHIN_R, B_FOOT_R, B_UARM_R, B_FARM_R];
     for (var s2 = 0; s2 < 2; s2++) {
       var g = s2 === 0 ? L : R;
-      capsule(g[0], 235, 7.8, 5.4);
-      capsule(g[1], 205, 6.0, 3.6);
-      capsule(g[2], 100, 4.2, 3.4);
-      capsule(g[3], 165, 5.0, 4.2);
-      capsule(g[4], 145, 4.2, 3.6);
+      capsule(g[0], 220, 6.5, 5.0);
+      capsule(g[1], 230, 4.8, 3.4);
+      capsule(g[2], 100, 4.0, 3.2);
+      capsule(g[3], 150, 4.6, 4.0);
+      capsule(g[4], 140, 3.8, 3.2);
     }
-    sphere(S_HAND_L, 70, 4.3);
-    sphere(S_HAND_R, 70, 4.3);
+    sphere(S_HAND_L, 70, 3.8);
+    sphere(S_HAND_R, 70, 3.8);
     // visor: a steady bright cyan band wrapping the front of the helmet
     for (var vi = 0; vi < spts.length; vi++) {
       var vp = spts[vi];
@@ -131,16 +133,17 @@
   function silWidth(y) {
     if (y < 0) return 0;
     if (y < 12) return 17;
-    if (y < 48) return 15;
-    if (y < 86) return 17;
-    if (y < 116) return 16;
-    if (y < 152) return 27;
-    if (y < 178) return 12;
+    if (y < 52) return 13;
+    if (y < 84) return 15.5;
+    if (y < 109) return 14.5;
+    if (y < 146) return 18;
+    if (y < 153) return 10;
+    if (y < 172) return 9.5;
     return 0;
   }
 
   /* ---------- gait: slow lunar lope — long floaty strides, high lift ---------- */
-  var CYC = 2.0, STEP = 34, LIFT = 17, STANCE = 0.5;
+  var CYC = 2.0, STEP = 34, LIFT = 15, STANCE = 0.5;
   // stance foot travels STEP over STANCE*CYC seconds; terrain must scroll at the
   // same speed or planted feet skate against the ground
   var SPEED = STEP / (STANCE * CYC);
@@ -168,7 +171,7 @@
     var W = 0, H = 0, cx = 0, cy = 0, f = 0, fs = 0, dpr = 1, dist = 365;
     var yaw = -0.34, pitch = -0.10, yawV = 0;
     var dragging = false, lx = 0, ly = 0, fired = false, activeId = null;
-    var targY = 92;
+    var targY = 88;
     var reduce = false;
     try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
 
@@ -335,7 +338,9 @@
     }
 
     var FOOT = { x: 0, y: 0, air: 0 };
-    var THIGH = 44, SHIN = 41;
+    // H2 legs: short thigh, long shin (knee rides high); hips kept low enough
+    // that the knees stay flexed like a real walking humanoid
+    var THIGH = 31.5, SHIN = 48.7;
 
     function legIK(thighId, shinId, footId, kneeSi, hipX, hipY, hipZ, lp, sideZ, t) {
       footTrack(lp, FOOT);
@@ -363,9 +368,9 @@
       setBone(thighId, hipX, hipY, hipZ, kx, ky, kz);
       setBone(shinId, kx, ky, kz, ax, ay, az);
       sph[kneeSi].x = kx; sph[kneeSi].y = ky; sph[kneeSi].z = kz;
-      // foot: ankle to toe, toe dips slightly during swing
+      // foot: ankle to toe (H2 has long flat feet), toe dips slightly during swing
       var toeDrop = FOOT.air * 2.6;
-      setBone(footId, ax, ay - 2.2, az, ax + 15.2, Math.max(2.0, ay - 5.2 - toeDrop), az, true);
+      setBone(footId, ax, ay - 2.2, az, ax + 17, Math.max(2.0, ay - 5.2 - toeDrop), az, true);
       return ax;
     }
 
@@ -373,12 +378,12 @@
       // arms carried slightly out from the body with bent elbows — the
       // balance posture of someone walking in low gravity
       var th2 = th * 1.05 + 0.85;
-      var ux0 = Math.sin(th), uy0 = -Math.cos(th), uz0 = side * 0.24;
+      var ux0 = Math.sin(th), uy0 = -Math.cos(th), uz0 = side * 0.18;
       var l0 = Math.sqrt(ux0 * ux0 + uy0 * uy0 + uz0 * uz0);
-      var ex = shX + 26 * ux0 / l0, eyy = shY + 26 * uy0 / l0, ez = shZ + 26 * uz0 / l0;
+      var ex = shX + 23 * ux0 / l0, eyy = shY + 23 * uy0 / l0, ez = shZ + 23 * uz0 / l0;
       var fx0 = Math.sin(th2), fy0 = -Math.cos(th2), fz0 = side * 0.08;
       var l1 = Math.sqrt(fx0 * fx0 + fy0 * fy0 + fz0 * fz0);
-      var hx = ex + 24 * fx0 / l1, hy = eyy + 24 * fy0 / l1, hz = ez + 24 * fz0 / l1;
+      var hx = ex + 26 * fx0 / l1, hy = eyy + 26 * fy0 / l1, hz = ez + 26 * fz0 / l1;
       setBone(uarmId, shX, shY, shZ, ex, eyy, ez);
       setBone(farmId, ex, eyy, ez, hx, hy, hz);
       sph[shSi].x = shX; sph[shSi].y = shY + 1.5; sph[shSi].z = shZ + side * 1.5;
@@ -389,33 +394,36 @@
 
     function computePose(t) {
       var phase = reduce ? 0.18 : (t / CYC) % 1;
-      // lunar lope: pronounced vertical bounce, forward astronaut lean
+      // lunar lope: pronounced vertical bounce, slight forward lean
       var bob = 3.4 * Math.sin(2 * TAU * phase + 0.7);
       var sway = -2.6 * Math.sin(TAU * phase);
-      var lean = 8;
+      var lean = 6;
       var hipTw = 2.8 * Math.cos(TAU * phase);
       var shTw = -2.1 * Math.cos(TAU * phase);
 
-      var pelY = 88 + bob;
-      var waistX = lean * 0.45, waistY = 116 + bob * 0.92, waistZ = sway * 0.8;
-      var chestX = lean * 0.9, chestY = 140 + bob * 0.85, chestZ = sway * 0.55;
-      var headX = lean * 1.1, headY = 165 + bob * 0.8, headZ = sway * 0.38;
+      // H2 vertical stack from the URDF (hip pivot lowered so the knees stay
+      // ~26 deg flexed): hips 81, waist ~107, chest/shoulders ~142, head ~161
+      var hipY = 81 + bob;
+      var waistX = lean * 0.45, waistY = hipY + 25.6, waistZ = sway * 0.8;
+      var chestX = lean * 0.9, chestY = hipY + 61, chestZ = sway * 0.55;
+      var headX = lean * 1.1, headY = hipY + 80, headZ = sway * 0.38;
 
-      setBone(B_SPINE1, 0, pelY - 2, sway, waistX, waistY, waistZ);
+      setBone(B_SPINE1, 0, hipY + 9, sway, waistX, waistY, waistZ);
       setBone(B_SPINE2, waistX, waistY, waistZ, chestX, chestY, chestZ);
-      setBone(B_NECK, chestX * 1.05, 149 + bob * 0.83, sway * 0.45, headX, headY - 6.5, headZ);
-      setBone(B_HIPBAR, hipTw, pelY - 3.5, -11 + sway, -hipTw, pelY - 3.5, 11 + sway, true);
-      setBone(B_SHBAR, chestX + shTw, 142 + bob * 0.85, -27 + sway * 0.5, chestX - shTw, 142 + bob * 0.85, 27 + sway * 0.5, true);
+      setBone(B_NECK, chestX * 1.05, hipY + 69, sway * 0.45, headX, headY - 6, headZ);
+      setBone(B_HIPBAR, hipTw, hipY + 6.5, -13 + sway, -hipTw, hipY + 6.5, 13 + sway, true);
+      setBone(B_SHBAR, chestX + shTw, hipY + 61, -16.5 + sway * 0.5, chestX - shTw, hipY + 61, 16.5 + sway * 0.5, true);
       sph[S_HEAD].x = headX; sph[S_HEAD].y = headY; sph[S_HEAD].z = headZ;
 
       var lpL = phase, lpR = (phase + 0.5) % 1;
-      legIK(B_THIGH_L, B_SHIN_L, B_FOOT_L, S_KNEE_L, hipTw, pelY - 3.5, -11 + sway * 0.6, lpL, -11, t);
-      legIK(B_THIGH_R, B_SHIN_R, B_FOOT_R, S_KNEE_R, -hipTw, pelY - 3.5, 11 + sway * 0.6, lpR, 11, t);
+      // H2: hip pivots sit wider (z ±13) than the feet track (z ±9.5)
+      legIK(B_THIGH_L, B_SHIN_L, B_FOOT_L, S_KNEE_L, hipTw, hipY, -13 + sway * 0.6, lpL, -9.5, t);
+      legIK(B_THIGH_R, B_SHIN_R, B_FOOT_R, S_KNEE_R, -hipTw, hipY, 13 + sway * 0.6, lpR, 9.5, t);
 
-      var thL = -0.40 * Math.cos(TAU * phase);
-      var thR = 0.40 * Math.cos(TAU * phase);
-      armChain(B_UARM_L, B_FARM_L, S_HAND_L, S_SH_L, chestX + shTw, 140.5 + bob * 0.85, -28.5 + sway * 0.5, thL, -1);
-      armChain(B_UARM_R, B_FARM_R, S_HAND_R, S_SH_R, chestX - shTw, 140.5 + bob * 0.85, 28.5 + sway * 0.5, thR, 1);
+      var thL = -0.35 * Math.cos(TAU * phase);
+      var thR = 0.35 * Math.cos(TAU * phase);
+      armChain(B_UARM_L, B_FARM_L, S_HAND_L, S_SH_L, chestX + shTw, hipY + 59.5, -18 + sway * 0.5, thL, -1);
+      armChain(B_UARM_R, B_FARM_R, S_HAND_R, S_SH_R, chestX - shTw, hipY + 59.5, 18 + sway * 0.5, thR, 1);
 
       pose.headX = headX; pose.headY = headY; pose.headZ = headZ;
       pose.chestX = chestX; pose.chestY = chestY; pose.chestZ = chestZ;
@@ -425,7 +433,7 @@
         var lps = [lpL, lpR];
         for (var leg = 0; leg < 2; leg++) {
           if (lps[leg] < prevLp[leg] - 0.5 || (prevLp[leg] > STANCE && lps[leg] < 0.1)) {
-            plantFoot(leg === 0 ? -11 : 11);
+            plantFoot(leg === 0 ? -9.5 : 9.5);
           }
           prevLp[leg] = lps[leg];
         }
@@ -653,7 +661,7 @@
       var sw = silWidth(scanY);
       if (sw > 0) {
         // the leaned figure carries its head forward — track the ring center
-        var rcx = scanY > 152 ? 8 : 2;
+        var rcx = scanY > 150 ? 7 : 2;
         ctx.strokeStyle = fill(1, 0.15);
         ctx.beginPath();
         started = false;
@@ -719,7 +727,7 @@
 
       /* chest light (breathing) */
       var pulse = 0.35 + 0.4 * Math.sin(t1 * 2.4);
-      if (project(pose.chestX + 11, pose.chestY - 7, pose.chestZ, P)) {
+      if (project(pose.chestX + 9.5, pose.chestY - 6, pose.chestZ, P)) {
         var pr2 = 1.6 * f / P[2];
         var cg = ctx.createRadialGradient(P[0], P[1], 0, P[0], P[1], pr2 * 3);
         cg.addColorStop(0, 'rgba(200,240,255,' + (0.5 + pulse * 0.4).toFixed(3) + ')');
