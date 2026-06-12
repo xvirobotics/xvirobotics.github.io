@@ -394,7 +394,7 @@
 
     </div>
 
-    <script src="holo-scene.js"></script>
+    <script src="moonwalk-scene.js"></script>
     <script>
         function applyLang(lang) {
             document.documentElement.setAttribute("lang", lang);
@@ -440,8 +440,8 @@
             var canvas = document.getElementById("bg");
             var tries = 0;
             (function boot() {
-                if (window.XVIHoloScene && canvas) {
-                    window.XVIHoloScene(canvas);
+                if (window.XVIMoonWalk && canvas) {
+                    window.XVIMoonWalk(canvas);
                 } else if (tries++ < 50) {
                     setTimeout(boot, 80);
                 }
