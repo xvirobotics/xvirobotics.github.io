@@ -532,7 +532,8 @@ window.XVIMoonBase = function (canvas) {
   var prevPh = 0.0;
   function pose(t) {
     if (!rig) return;
-    var info = rig.update(reduce ? 0.18 * GAIT.CYC : t);
+    // reduced motion: freeze at a double-support phase (both feet planted, mid-stride)
+    var info = rig.update(reduce ? 0.05 * GAIT.CYC : t);
     robot.position.y = groundY0 + info.bob;
     if (!reduce) {
       var ph = info.phase;

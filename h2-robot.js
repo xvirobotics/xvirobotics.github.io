@@ -8,7 +8,7 @@ var TAU = Math.PI * 2;
 var DEG = Math.PI / 180;
 
 /* gait timing (shared with the scene so the treadmill locks to the stride) */
-export var GAIT = { CYC: 1.45, STANCE: 0.62, stepLen: 0.36 };
+export var GAIT = { CYC: 1.25, STANCE: 0.6, stepLen: 0.46 };
 
 function smooth(u) { return u * u * (3 - 2 * u); }
 
@@ -120,101 +120,111 @@ function buildRig(gltf, kin) {
     headGroup: headG, torsoGroup: torsoG
   };
 
-  /* ---- biomechanical walk: drive every joint from one phase ---- */
-  // sign conventions resolved against the H2 URDF axes (tuned visually)
-  // about the URDF +Y hip/knee axes, a positive joint angle swings the leg
+  /* ---- biomechanical walk ---- */
+  // about the URDF +Y hip/knee axes a positive joint angle swings the leg
   // BACKWARD, so the forward stride needs negated hip/knee/ankle pitch
-  var S = { hipPitch: -1, knee: 1, anklePitch: -1, hipRoll: 1, shoulder: 1 };
-  // arm carriage (deg) — tuned visually; pitch0=0 hangs straight down
-  var ARM = { pitch0: 0, swing: 18, roll: 6, elbow: 0 };
+  var S = { hipPitch: -1, knee: 1, anklePitch: -1, foot: 1, hipRoll: 1 };
+  // tunables (radians unless noted) — adjusted by watching a full-stride sheet
+  var G = {
+    standH: 0.92,        // stance hip height as a fraction of leg length
+    bob: 0.026,          // vertical CoM oscillation
+    swingLift: 0.022,    // ankle rise in swing
+    tuck: 0.065,         // leg shortening in swing -> knee flexion (foot clearance)
+    heel: 12 * DEG,      // dorsiflexion at heel strike (toe up)
+    toe: 20 * DEG,       // plantarflexion at toe-off (heel up, push)
+    hipAdduct: 2.2 * DEG,// legs track slightly under the body
+    waistPitch: 5.5 * DEG,// forward lean
+    waistYaw: 8 * DEG,   // thorax counter-rotation vs the legs
+    waistRoll: 3 * DEG,  // lateral weight sway
+    armSwing: 34 * DEG,
+    armElbow: 15 * DEG,  // base elbow flexion
+    armRoll: 7 * DEG
+  };
 
-  function footTrack(lp, out) {
+  var FT = { x: 0, y: 0, pitch: 0, tuck: 0, air: 0 };
+  function footTrack(lp) {
     var ST = GAIT.STANCE;
-    if (lp < ST) {                         // stance: foot moves back, planted
+    if (lp < ST) {                                   // stance: planted, rolls heel->toe
       var u = lp / ST;
-      out.x = GAIT.stepLen / 2 - GAIT.stepLen * u;
-      out.y = 0; out.air = 0;
-    } else {                               // swing: foot lifts and reaches forward
+      FT.x = GAIT.stepLen / 2 - GAIT.stepLen * u;     // linear back == treadmill speed
+      FT.y = 0; FT.tuck = 0; FT.air = 0;
+      if (u < 0.15) FT.pitch = G.heel * (1 - u / 0.15);            // heel-strike dorsiflex fades
+      else if (u > 0.6) FT.pitch = -G.toe * smooth((u - 0.6) / 0.4); // late-stance push-off
+      else FT.pitch = 0;
+    } else {                                         // swing: knee tucks up, foot reaches forward
       var u2 = (lp - ST) / (1 - ST);
-      out.x = -GAIT.stepLen / 2 + GAIT.stepLen * smooth(u2);
+      FT.x = -GAIT.stepLen / 2 + GAIT.stepLen * smooth(u2);
       var s = Math.sin(Math.PI * u2);
-      out.y = 0.135 * Math.sqrt(s > 0 ? s : 0);  // low-g hang
-      out.air = s;
+      FT.y = G.swingLift * s;
+      FT.tuck = G.tuck * Math.sin(Math.PI * Math.min(1, u2 * 1.1)); // peak flex early-mid swing
+      // ease the ankle from the toe-off push back up to heel-strike dorsiflexion,
+      // so foot pitch is continuous across the toe-off boundary (no snap)
+      FT.pitch = -G.toe + (G.heel + G.toe) * smooth(u2);
+      FT.air = s;
     }
   }
 
-  var FT = { x: 0, y: 0, air: 0 };
-  // returns {hip,knee,ankle} sagittal joint angles to put the foot at (fx, fy)
-  function legIK(fx, fy, standH) {
-    footHelper(fx, fy, standH);
-    return footHelper.out;
-  }
-  function footHelper(fx, fy, standH) {
-    var dx = fx, dz = -(standH - fy);        // hip at origin; down is -z(up)
-    var d = Math.sqrt(dx * dx + dz * dz);
+  var IKO = { hip: 0, knee: 0, ankle: 0 };
+  var UPD = { phase: 0, bob: 0 };  // reused per-frame return (no allocation in the loop)
+  function legIK(fx, fy, standH) {                    // 2-bone IK in the sagittal plane
+    var depth = standH - fy;
+    var d = Math.sqrt(fx * fx + depth * depth);
     var maxD = LEG - 0.003;
-    if (d > maxD) { d = maxD; }
-    // angle of hip->foot line from straight down
-    var line = Math.atan2(dx, standH - fy);
+    if (d > maxD) d = maxD;
+    var line = Math.atan2(fx, depth);
     var cosK = (THIGH * THIGH + d * d - SHIN * SHIN) / (2 * THIGH * d);
     cosK = cosK > 1 ? 1 : (cosK < -1 ? -1 : cosK);
-    var hipFromLine = Math.acos(cosK);
-    var thigh = line + hipFromLine;          // thigh pitch fwd from vertical
+    var thigh = line + Math.acos(cosK);
     var cosKnee = (THIGH * THIGH + SHIN * SHIN - d * d) / (2 * THIGH * SHIN);
     cosKnee = cosKnee > 1 ? 1 : (cosKnee < -1 ? -1 : cosKnee);
-    var knee = Math.PI - Math.acos(cosKnee); // interior flex (0 = straight)
-    var shinPitch = thigh - knee;
-    footHelper.out = { hip: thigh, knee: knee, ankle: -shinPitch };
+    var knee = Math.PI - Math.acos(cosKnee);
+    IKO.hip = thigh; IKO.knee = knee; IKO.ankle = -(thigh - knee);
   }
-  footHelper.out = { hip: 0, knee: 0, ankle: 0 };
 
-  function leg(side, lp, standH, list) {
-    footTrack(lp, FT);
+  function leg(side, lp, standH) {
+    footTrack(lp);
     var pre = side < 0 ? 'left_' : 'right_';
-    var a = legIK(FT.x, FT.y, standH);
-    setAngle(pre + 'hip_pitch_joint', S.hipPitch * a.hip);
-    setAngle(pre + 'knee_joint', S.knee * a.knee);
-    // keep the sole roughly flat, add a toe-off push during late stance
-    var toe = (lp < GAIT.STANCE && lp > GAIT.STANCE * 0.7) ? (lp - GAIT.STANCE * 0.7) / (GAIT.STANCE * 0.3) * 0.35 : 0;
-    setAngle(pre + 'ankle_pitch_joint', S.anklePitch * (a.ankle + toe));
-    setAngle(pre + 'hip_roll_joint', S.hipRoll * side * list);
+    legIK(FT.x, FT.y, standH - FT.tuck);             // tuck shortens the leg -> knee bends in swing
+    setAngle(pre + 'hip_pitch_joint', S.hipPitch * IKO.hip);
+    setAngle(pre + 'knee_joint', S.knee * IKO.knee);
+    setAngle(pre + 'ankle_pitch_joint', S.anklePitch * IKO.ankle + S.foot * FT.pitch);
+    setAngle(pre + 'hip_roll_joint', S.hipRoll * side * G.hipAdduct);
     return FT.air;
   }
 
   rig.update = function (t) {
     var phase = (t / GAIT.CYC) % 1;
-    var bob = 0.028 * Math.sin(2 * TAU * phase + 0.7);
-    // the body bob is applied to the whole rig by the scene; extend the legs by
-    // the same bob so the planted stance foot stays pinned to the ground (the
-    // stance leg straightening IS the bob, instead of the foot sliding vertically)
-    var standH = rig.LEG * 0.93 + bob;
-    var sway = 2.0 * DEG * Math.sin(TAU * phase);    // pelvis frontal sway
-    var pelvisYaw = 4 * DEG * Math.cos(TAU * phase);
+    var w = TAU * phase;
+    var bob = G.bob * Math.sin(2 * w + 0.7);
+    // the scene applies bob to the whole rig; extend the legs by bob so the
+    // planted stance foot stays pinned (the leg straightening IS the bob)
+    var standH = rig.LEG * G.standH + bob;
 
-    // pelvis articulation goes through the waist + hip joints; the holder owns
-    // the Z-up->Y-up orientation, so the root stays identity here
-    setAngle('waist_yaw_joint', -pelvisYaw * 1.4);
-    setAngle('waist_pitch_joint', 6 * DEG);          // slight forward stoop
-    setAngle('waist_roll_joint', sway * 0.5);
+    // trunk: forward lean, counter-rotation to the swinging legs, lateral sway
+    setAngle('waist_pitch_joint', G.waistPitch);
+    setAngle('waist_yaw_joint', G.waistYaw * Math.cos(w));
+    setAngle('waist_roll_joint', G.waistRoll * Math.sin(w));
 
-    var airL = leg(-1, phase, standH, sway);
-    var airR = leg(1, (phase + 0.5) % 1, standH, sway);
+    leg(-1, phase, standH);
+    leg(1, (phase + 0.5) % 1, standH);
 
-    // arms swing opposite the legs, slight abduction, fixed elbow bend
-    var sw = ARM.swing * DEG * Math.cos(TAU * phase);
-    setAngle('left_shoulder_pitch_joint', ARM.pitch0 * DEG + sw);
-    setAngle('right_shoulder_pitch_joint', ARM.pitch0 * DEG - sw);
-    setAngle('left_shoulder_roll_joint', ARM.roll * DEG);
-    setAngle('right_shoulder_roll_joint', -ARM.roll * DEG);
-    setAngle('left_elbow_joint', ARM.elbow * DEG);
-    setAngle('right_elbow_joint', ARM.elbow * DEG);
+    // arms swing opposite the legs; elbow bends a touch more on the forward swing
+    var sw = G.armSwing * Math.cos(w);
+    setAngle('left_shoulder_pitch_joint', sw);
+    setAngle('right_shoulder_pitch_joint', -sw);
+    setAngle('left_shoulder_roll_joint', G.armRoll);
+    setAngle('right_shoulder_roll_joint', -G.armRoll);
+    setAngle('left_elbow_joint', -(G.armElbow + Math.max(0, sw) * 0.5));
+    setAngle('right_elbow_joint', -(G.armElbow + Math.max(0, -sw) * 0.5));
 
-    setAngle('head_pitch_joint', -4 * DEG);          // gaze up toward the horizon
+    // head holds forward and level while the thorax rotates under it
+    setAngle('head_yaw_joint', -G.waistYaw * Math.cos(w) * 0.9);
+    setAngle('head_pitch_joint', -3 * DEG);
 
-    return { phase: phase, bob: bob, pelvisYaw: pelvisYaw, footAirL: airL, footAirR: airR, standH: standH };
+    UPD.phase = phase; UPD.bob = bob;
+    return UPD;
   };
 
-  // expose sign table so the scene can flip conventions during tuning
-  rig.SIGN = S;
+  rig.G = G; rig.SIGN = S;
   return rig;
 }
