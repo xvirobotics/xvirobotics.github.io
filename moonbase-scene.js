@@ -532,10 +532,11 @@ window.XVIMoonBase = function (canvas) {
   var px = 0, pz = 0, heading = 0;   // robot's virtual world pose
   var spd = 0, trn = 0;              // eased speed (m/s) and turn rate (rad/s)
   var inFwd = 0, inTurn = 0, inActive = false;
-  var gaitT = 0, robotGY = sampledH(0, 0); // seed to ground height (no startup pop / reduced-motion burial)
+  // seed gaitT to a double-support phase so the idle stance reads as a clean
+  // stand; robotGY seeded to ground height (no startup pop / foot burial)
+  var gaitT = 0.05 * GAIT.CYC, robotGY = sampledH(0, 0);
   var CRUISE = 0.5, MAXSPD = 1.7, MAXTRN = 1.0;
   function drive(fwd, turn, active) {
-    if (reduce) return; // no locomotion (and no needless re-render) under reduced motion
     inFwd = fwd < -1 ? -1 : (fwd > 1 ? 1 : fwd);
     inTurn = turn < -1 ? -1 : (turn > 1 ? 1 : turn);
     inActive = active === undefined ? (Math.abs(inFwd) > 0.04 || Math.abs(inTurn) > 0.04) : !!active;
@@ -546,19 +547,18 @@ window.XVIMoonBase = function (canvas) {
   var raf = 0, last = performance.now(), t0 = last;
   var ema = 16, quality = 2, maxQ = 2, drops = 0; // pixel-ratio ladder state
 
-  var prevPh = 0.0, sin = Math.sin, cos = Math.cos;
+  var prevPh = 0.0, sin = Math.sin, cos = Math.cos, moving = false;
   function pose() {
     if (!rig) return;
-    // reduced motion: freeze at a double-support phase (both feet planted)
-    var info = rig.update(reduce ? 0.05 * GAIT.CYC : gaitT);
+    var info = rig.update(gaitT);  // gaitT is frozen when idle -> static stance
     robot.position.y = robotGY + groundY0 + info.bob;
-    if (!reduce) {
+    if (moving) {
       var ph = info.phase, ch = cos(heading), sh = sin(heading);
       // footfall puffs at the walker's world-local feet (so they stay on the ground)
       if (ph < prevPh) puff(px - sh * 0.1, robotGY, pz + ch * 0.1);          // left heel strike
       if (prevPh < 0.5 && ph >= 0.5) puff(px + sh * 0.1, robotGY, pz - ch * 0.1); // right heel strike
-      prevPh = ph;
     }
+    prevPh = info.phase;
   }
 
   var beaconPhase = 0;
@@ -586,26 +586,26 @@ window.XVIMoonBase = function (canvas) {
       yawV *= Math.pow(0.12, dt);
     }
 
-    // integrate the controller: ease toward the joystick target (or a gentle
-    // cruise when untouched), advance the virtual world pose, drive the gait by
-    // distance travelled so the planted foot stays locked at any speed
-    if (!reduce) {
-      var tgtSpd = inActive ? inFwd * MAXSPD : CRUISE;
-      var tgtTrn = inActive ? inTurn * MAXTRN : 0;
-      spd += (tgtSpd - spd) * Math.min(1, dt * 4);
-      trn += (tgtTrn - trn) * Math.min(1, dt * 6);
-      heading += trn * dt;
-      px += cos(heading) * spd * dt;
-      pz += sin(heading) * spd * dt;
-      // drive the step cadence by forward speed AND turning, so the robot keeps
-      // stepping (not rigidly pivoting) through and on the spot during turns.
-      // tsgn ramps 1 -> -1 across spd in [0,-0.2] (continuous through 0), so a
-      // standing turn steps forward and only a real reverse steps backward
-      var tsgn = spd > 0 ? 1 : Math.max(-1, 1 + spd / 0.1);
-      var loco = spd + tsgn * Math.abs(trn) * 0.42;
-      gaitT += loco * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
-      robotGY += (sampledH(px, pz) - robotGY) * Math.min(1, dt * 6);
-    }
+    // integrate the controller: ease toward the joystick target, advance the
+    // virtual world pose, drive the gait by distance so the foot stays locked.
+    // Reduced motion only disables the idle auto-cruise — the user can still
+    // drive, and the robot still renders (it just doesn't move on its own).
+    var tgtSpd = inActive ? inFwd * MAXSPD : (reduce ? 0 : CRUISE);
+    var tgtTrn = inActive ? inTurn * MAXTRN : 0;
+    spd += (tgtSpd - spd) * Math.min(1, dt * 4);
+    trn += (tgtTrn - trn) * Math.min(1, dt * 6);
+    heading += trn * dt;
+    px += cos(heading) * spd * dt;
+    pz += sin(heading) * spd * dt;
+    // step cadence from forward speed AND turning, so the robot keeps stepping
+    // (not rigidly pivoting) through and on the spot during turns. tsgn ramps
+    // 1 -> -1 across spd in [0,-0.2] (continuous through 0): a standing turn
+    // steps forward, only a real reverse steps backward
+    var tsgn = spd > 0 ? 1 : Math.max(-1, 1 + spd / 0.1);
+    var loco = spd + tsgn * Math.abs(trn) * 0.42;
+    gaitT += loco * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
+    robotGY += (sampledH(px, pz) - robotGY) * Math.min(1, dt * 6);
+    moving = inActive || Math.abs(spd) > 0.02 || Math.abs(trn) > 0.02;
 
     // robot moves through a fixed world; terrain + props stream around it
     robot.position.x = px;
@@ -671,14 +671,20 @@ window.XVIMoonBase = function (canvas) {
 
     renderer.render(scene, camera);
 
-    if (!reduce || dragging) {
+    // Keep animating while moving/dragging (or always, when motion is allowed).
+    // When idle under reduced motion, keep rendering for a short "settle" window
+    // after the last kick so the robot/terrain reliably paint (mobile WebGL can
+    // miss a single first frame) before the loop parks to save battery.
+    if (!reduce || dragging || moving || now < settleUntil) {
       raf = requestAnimationFrame(frame);
     } else {
       raf = 0;
     }
   }
 
+  var settleUntil = 0;
   function kick() {
+    settleUntil = performance.now() + 1800; // render burst so a fresh frame paints
     if (!raf) {
       last = performance.now();
       raf = requestAnimationFrame(frame);

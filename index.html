@@ -343,9 +343,8 @@
             .joy-toggle { right: 24px; bottom: 64px; width: 42px; height: 42px; }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-            .joystick, .joy-toggle { display: none; }
-        }
+        /* reduced motion only disables the auto-cruise (handled in JS); the
+           joystick stays available so users can still drive on demand */
 
         html[lang="zh"] [data-lang-en] {
             display: none;
