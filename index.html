@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="modulepreload" href="vendor/three.module.min.js">
+    <link rel="modulepreload" href="vendor/three.core.min.js">
     <link rel="icon" href="logo-new-mark.jpg">
     <style>
         html, body {
@@ -455,7 +457,7 @@
 
     </div>
 
-    <script src="moonwalk-scene.js"></script>
+    <script type="module" src="moonbase-scene.js"></script>
     <script>
         function applyLang(lang) {
             document.documentElement.setAttribute("lang", lang);
@@ -499,13 +501,28 @@
 
         (function bootScene() {
             var canvas = document.getElementById("bg");
-            var tries = 0;
-            (function boot() {
-                if (window.XVIMoonWalk && canvas) {
-                    window.XVIMoonWalk(canvas);
-                } else if (tries++ < 50) {
-                    setTimeout(boot, 80);
+            var booted = false;
+            function hideHint() {
+                document.getElementById("orbit-hint").classList.add("hinted");
+            }
+            function tryBoot() {
+                if (booted || !window.XVIMoonBase || !canvas) return false;
+                booted = true;
+                try {
+                    window.XVIMoonBase(canvas);
+                } catch (e) {
+                    hideHint(); // no WebGL: keep the static page, drop the orbit promise
                 }
+                return true;
+            }
+            // primary: the module announces itself (robust on slow connections);
+            // fallback: poll, then degrade gracefully if the scene never arrives
+            window.addEventListener("xvi-scene-ready", tryBoot, { once: true });
+            var tries = 0;
+            (function poll() {
+                if (tryBoot()) return;
+                if (tries++ < 150) setTimeout(poll, 80);
+                else if (!booted) hideHint();
             })();
         })();
     </script>
