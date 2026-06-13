@@ -36,9 +36,7 @@ function buildRig(gltf, kin) {
   var matShell = new THREE.MeshStandardMaterial({ color: 0xeef1f4, metalness: 0.28, roughness: 0.42 });
   var matDark = new THREE.MeshStandardMaterial({ color: 0x1b1f24, metalness: 0.72, roughness: 0.46 });
   function matFor(link) {
-    // big shell segments (thigh/shin/upper-arm/forearm/torso/pelvis/head) are
-    // white; small joint connectors, hands and feet are the dark actuator metal
-    return /hand|_roll_link|_yaw_link/.test(link) ? matDark : matShell;
+    return matShell; // unified white shell across the whole body
   }
 
   // one group per link; parent per the joint tree
@@ -105,14 +103,9 @@ function buildRig(gltf, kin) {
     r.group.quaternion.copy(r.base).multiply(tmpQ);
   }
 
-  // accent emitters fixed to the head and torso links
+  // accent attach points (head/torso links) for the scene's brand glow
   var headG = groups['head_yaw_link'] || groups['head_pitch_link'] || groups['torso_link'];
   var torsoG = groups['torso_link'];
-  var visorMat = new THREE.MeshStandardMaterial({ color: 0x05161c, metalness: 0.5, roughness: 0.2, emissive: 0x7ee0ff, emissiveIntensity: 2.6 });
-  var visor = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 0.14), visorMat);
-  // head link is in URDF frame: +x forward, +z up — place on the face
-  visor.position.set(0.085, 0.02, 0.04);
-  if (headG) headG.add(visor);
 
   var rig = {
     root: root,
@@ -120,13 +113,14 @@ function buildRig(gltf, kin) {
     joints: joints,
     setAngle: setAngle,
     THIGH: THIGH, SHIN: SHIN, LEG: LEG,
-    headGroup: headG, torsoGroup: torsoG, visorMat: visorMat,
-    stanceHipY: 0
+    headGroup: headG, torsoGroup: torsoG
   };
 
   /* ---- biomechanical walk: drive every joint from one phase ---- */
   // sign conventions resolved against the H2 URDF axes (tuned visually)
-  var S = { hipPitch: 1, knee: -1, anklePitch: 1, hipRoll: 1, shoulder: 1 };
+  // about the URDF +Y hip/knee axes, a positive joint angle swings the leg
+  // BACKWARD, so the forward stride needs negated hip/knee/ankle pitch
+  var S = { hipPitch: -1, knee: 1, anklePitch: -1, hipRoll: 1, shoulder: 1 };
   // arm carriage (deg) — tuned visually; pitch0=0 hangs straight down
   var ARM = { pitch0: 0, swing: 18, roll: 6, elbow: 0 };
 

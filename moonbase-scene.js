@@ -279,7 +279,7 @@ window.XVIMoonBase = function (canvas) {
   robotZ.rotation.x = -Math.PI / 2;
   robot.add(robotZ);
 
-  var rig = null, groundY0 = 0.78, chestGlow = null, visorGlow = null;
+  var rig = null, groundY0 = 0.78, chestGlow = null;
   createH2Robot().then(function (r) {
     rig = r;
     robotZ.add(rig.root);
@@ -288,9 +288,6 @@ window.XVIMoonBase = function (canvas) {
     chestGlow = glowSprite(cyanGlowTex, 0.14);
     chestGlow.position.set(0.12, 0, 0.30);
     if (rig.torsoGroup) rig.torsoGroup.add(chestGlow);
-    visorGlow = glowSprite(cyanGlowTex, 0.2);
-    visorGlow.position.set(0.11, 0.02, 0.04);
-    if (rig.headGroup) rig.headGroup.add(visorGlow);
     kick();
   }).catch(function (e) { if (window.console) console.warn('H2 load failed', e); });
 
@@ -604,7 +601,6 @@ window.XVIMoonBase = function (canvas) {
     beaconGlow.material.opacity = bOn;
     var pulse = 0.75 + 0.25 * Math.sin(t * 2.2);
     if (chestGlow) chestGlow.material.opacity = pulse;
-    if (rig) rig.visorMat.emissiveIntensity = 2.2 + 0.8 * pulse;
     matCyan.emissiveIntensity = 1.9 + 0.7 * pulse;
 
     earth.rotation.y = t * 0.008;
