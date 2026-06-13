@@ -25,18 +25,21 @@ function buildRig(gltf, kin) {
   var linkNames = {};
   for (var ln in kin.links) linkNames[ln] = true;
   var meshByLink = {};
+  // manifest: which GLB node belongs to which link, and which is the dark part
+  var faceLink = kin.faceLink || 'head_yaw_link';
+  var nodeInfo = {};       // nodeName -> { link, dark }
+  (kin.meshNodes || []).forEach(function (mn) { nodeInfo[mn.node] = mn; });
+  var meshByNode = {};
   gltf.scene.traverse(function (o) {
-    if (!o.isMesh) return;
-    var n = o;
-    while (n && !(n.name in linkNames)) n = n.parent;
-    if (n) (meshByLink[n.name] = meshByLink[n.name] || []).push(o);
+    if (o.isMesh && nodeInfo[o.name]) (meshByNode[o.name] = meshByNode[o.name] || []).push(o);
   });
 
-  // materials approximating H2's white shell with dark actuators
+  // factory two-tone: near-white shell everywhere, matte black only on the
+  // real face-screen part the head DAE separates out
   var matShell = new THREE.MeshStandardMaterial({ color: 0xeef1f4, metalness: 0.28, roughness: 0.42 });
-  var matDark = new THREE.MeshStandardMaterial({ color: 0x1b1f24, metalness: 0.72, roughness: 0.46 });
-  function matFor(link) {
-    return matShell; // unified white shell across the whole body
+  var matFace = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: 0.5, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  function matForNode(mn) {
+    return (mn.dark && mn.link === faceLink) ? matFace : matShell;
   }
 
   // one group per link; parent per the joint tree
@@ -63,56 +66,22 @@ function buildRig(gltf, kin) {
     };
   }
 
-  // attach each link's mesh into its link group (vertices already in link frame)
-  for (var lk in meshByLink) {
-    var arr = meshByLink[lk];
+  // attach each node's mesh into its link group (vertices already in link frame)
+  for (var nn in meshByNode) {
+    var mn = nodeInfo[nn], grp = groups[mn.link], arr = meshByNode[nn];
     for (var m = 0; m < arr.length; m++) {
       var mesh = arr[m];
       mesh.position.set(0, 0, 0);
       mesh.quaternion.identity();
       mesh.scale.set(1, 1, 1);
-      mesh.material = matFor(lk);
-      if (!mesh.geometry.getAttribute('normal')) mesh.geometry.computeVertexNormals();
+      mesh.material = matForNode(mn);
+      mesh.geometry.computeVertexNormals();
       mesh.castShadow = true;
       mesh.receiveShadow = false; // self-shadow on a small white robot isn't worth the per-fragment sample
-      groups[lk].add(mesh);
+      grp.add(mesh);
     }
   }
 
-  // black face screen: overlay the forward-facing triangles of the head mesh
-  // with a dark matte plate (the real H2 has a white helmet + dark face)
-  var matFace = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: 0.5, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  (function addFace() {
-    var hg = groups['head_yaw_link'];
-    var hm = (meshByLink['head_yaw_link'] || [])[0];
-    if (!hg || !hm) return;
-    // derive the head's local "forward" from its rest world orientation rather
-    // than assuming an axis (the head link frame is rotated by the joint chain)
-    groups[kin.root].updateWorldMatrix(true, true);
-    var hwq = new THREE.Quaternion();
-    hg.getWorldQuaternion(hwq);
-    hwq.invert();
-    var fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(hwq); // walking dir in head-local
-    var g = hm.geometry.index ? hm.geometry.toNonIndexed() : hm.geometry;
-    var p = g.getAttribute('position'), nrm = g.getAttribute('normal');
-    var keep = [];
-    for (var f = 0; f < p.count; f += 3) {
-      var nx = (nrm.getX(f) + nrm.getX(f + 1) + nrm.getX(f + 2)) / 3;
-      var ny = (nrm.getY(f) + nrm.getY(f + 1) + nrm.getY(f + 2)) / 3;
-      var nz = (nrm.getZ(f) + nrm.getZ(f + 1) + nrm.getZ(f + 2)) / 3;
-      if (nx * fwd.x + ny * fwd.y + nz * fwd.z > 0.12) { // forward-facing head triangles => the face
-        for (var k = 0; k < 3; k++) keep.push(p.getX(f + k), p.getY(f + k), p.getZ(f + k));
-      }
-    }
-    if (!keep.length) return;
-    var fg = new THREE.BufferGeometry();
-    fg.setAttribute('position', new THREE.Float32BufferAttribute(keep, 3));
-    fg.computeVertexNormals();
-    var face = new THREE.Mesh(fg, matFace);
-    face.castShadow = false;
-    face.receiveShadow = false;
-    hg.add(face);
-  })();
 
   var root = groups[kin.root];
 

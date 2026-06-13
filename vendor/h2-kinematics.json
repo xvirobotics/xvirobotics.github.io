@@ -728,6 +728,184 @@
 ]
 }
 ],
+"faceLink": "head_yaw_link",
+"meshNodes": [
+{
+"node": "pelvis",
+"link": "pelvis",
+"dark": false
+},
+{
+"node": "left_hip_pitch_link",
+"link": "left_hip_pitch_link",
+"dark": false
+},
+{
+"node": "left_hip_roll_link",
+"link": "left_hip_roll_link",
+"dark": false
+},
+{
+"node": "left_hip_yaw_link",
+"link": "left_hip_yaw_link",
+"dark": false
+},
+{
+"node": "left_knee_link",
+"link": "left_knee_link",
+"dark": false
+},
+{
+"node": "left_ankle_roll_link",
+"link": "left_ankle_roll_link",
+"dark": false
+},
+{
+"node": "left_ankle_pitch_link",
+"link": "left_ankle_pitch_link",
+"dark": false
+},
+{
+"node": "right_hip_pitch_link",
+"link": "right_hip_pitch_link",
+"dark": false
+},
+{
+"node": "right_hip_roll_link",
+"link": "right_hip_roll_link",
+"dark": false
+},
+{
+"node": "right_hip_yaw_link",
+"link": "right_hip_yaw_link",
+"dark": false
+},
+{
+"node": "right_knee_link",
+"link": "right_knee_link",
+"dark": false
+},
+{
+"node": "right_ankle_roll_link",
+"link": "right_ankle_roll_link",
+"dark": false
+},
+{
+"node": "right_ankle_pitch_link",
+"link": "right_ankle_pitch_link",
+"dark": false
+},
+{
+"node": "waist_yaw_link",
+"link": "waist_yaw_link",
+"dark": false
+},
+{
+"node": "waist_roll_link",
+"link": "waist_roll_link",
+"dark": false
+},
+{
+"node": "torso_link",
+"link": "torso_link",
+"dark": false
+},
+{
+"node": "head_pitch_link",
+"link": "head_pitch_link",
+"dark": false
+},
+{
+"node": "head_yaw_link",
+"link": "head_yaw_link",
+"dark": false
+},
+{
+"node": "left_shoulder_pitch_link",
+"link": "left_shoulder_pitch_link",
+"dark": false
+},
+{
+"node": "left_shoulder_roll_link",
+"link": "left_shoulder_roll_link",
+"dark": false
+},
+{
+"node": "left_shoulder_yaw_link",
+"link": "left_shoulder_yaw_link",
+"dark": false
+},
+{
+"node": "left_elbow_link",
+"link": "left_elbow_link",
+"dark": false
+},
+{
+"node": "left_wrist_roll_link",
+"link": "left_wrist_roll_link",
+"dark": false
+},
+{
+"node": "left_wrist_pitch_link",
+"link": "left_wrist_pitch_link",
+"dark": false
+},
+{
+"node": "left_wrist_yaw_link",
+"link": "left_wrist_yaw_link",
+"dark": false
+},
+{
+"node": "left_hand_link",
+"link": "left_hand_link",
+"dark": false
+},
+{
+"node": "right_shoulder_pitch_link",
+"link": "right_shoulder_pitch_link",
+"dark": false
+},
+{
+"node": "right_shoulder_roll_link",
+"link": "right_shoulder_roll_link",
+"dark": false
+},
+{
+"node": "right_shoulder_yaw_link",
+"link": "right_shoulder_yaw_link",
+"dark": false
+},
+{
+"node": "right_elbow_link",
+"link": "right_elbow_link",
+"dark": false
+},
+{
+"node": "right_wrist_roll_link",
+"link": "right_wrist_roll_link",
+"dark": false
+},
+{
+"node": "right_wrist_pitch_link",
+"link": "right_wrist_pitch_link",
+"dark": false
+},
+{
+"node": "right_wrist_yaw_link",
+"link": "right_wrist_yaw_link",
+"dark": false
+},
+{
+"node": "right_hand_link",
+"link": "right_hand_link",
+"dark": false
+},
+{
+"node": "face_screen",
+"link": "head_yaw_link",
+"dark": true
+}
+],
 "links": {
 "pelvis": {
 "mesh": "pelvis.stl"
