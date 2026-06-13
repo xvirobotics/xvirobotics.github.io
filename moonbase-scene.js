@@ -598,8 +598,11 @@ window.XVIMoonBase = function (canvas) {
       px += cos(heading) * spd * dt;
       pz += sin(heading) * spd * dt;
       // drive the step cadence by forward speed AND turning, so the robot keeps
-      // stepping (not rigidly pivoting) through and on the spot during turns
-      var loco = spd + (spd < -0.01 ? -1 : 1) * Math.abs(trn) * 0.42;
+      // stepping (not rigidly pivoting) through and on the spot during turns.
+      // tsgn ramps 1 -> -1 across spd in [0,-0.2] (continuous through 0), so a
+      // standing turn steps forward and only a real reverse steps backward
+      var tsgn = spd > 0 ? 1 : Math.max(-1, 1 + spd / 0.1);
+      var loco = spd + tsgn * Math.abs(trn) * 0.42;
       gaitT += loco * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
       robotGY += (sampledH(px, pz) - robotGY) * Math.min(1, dt * 6);
     }
@@ -644,9 +647,11 @@ window.XVIMoonBase = function (canvas) {
     var tx = robot.position.x, ty = robotGY + lookY, tz = robot.position.z;
     var thc = camHeading + Math.PI + CAMSIDE + yaw; // behind + 3/4 offset + drag
     var cp = Math.cos(pitch), spv = Math.sin(pitch);
-    var cpx = tx + Math.sin(thc) * dist * cp;
+    // same trig basis as the robot's heading (cos->x, sin->z) so the camera
+    // truly trails BEHIND the heading at every angle (not a mirrored one)
+    var cpx = tx + Math.cos(thc) * dist * cp;
     var cpy = ty + 0.62 + spv * dist;
-    var cpz = tz + Math.cos(thc) * dist * cp;
+    var cpz = tz + Math.sin(thc) * dist * cp;
     var kf = camInit ? Math.min(1, dt * 7) : 1; // snap on the first frame
     camInit = true;
     camera.position.set(
@@ -654,7 +659,9 @@ window.XVIMoonBase = function (canvas) {
       camera.position.y + (cpy - camera.position.y) * kf,
       camera.position.z + (cpz - camera.position.z) * kf
     );
-    camera.lookAt(tx, ty, tz);
+    // compose the robot off-centre on desktop (hero text sits on the left) by
+    // aiming slightly to its side along the camera-right axis
+    camera.lookAt(tx + Math.sin(thc) * lookX, ty, tz - Math.cos(thc) * lookX);
 
     // sky and shadow follow so stars/Earth stay at infinity and the shadow
     // frustum (fixed around its target) tracks the roaming robot
