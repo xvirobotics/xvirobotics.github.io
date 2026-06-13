@@ -267,8 +267,8 @@
         .joystick {
             position: absolute;
             z-index: 5;
-            left: 30px;
-            bottom: 64px;
+            right: 28px;
+            bottom: 108px;
             width: 116px;
             height: 116px;
             border-radius: 50%;
@@ -283,6 +283,10 @@
 
         .joystick:hover, .joystick.active {
             opacity: 0.92;
+        }
+
+        .joystick.hidden {
+            display: none;
         }
 
         .joy-knob {
@@ -300,13 +304,47 @@
             pointer-events: none;
         }
 
+        /* show/hide toggle, bottom-right corner just above the footer line */
+        .joy-toggle {
+            position: absolute;
+            z-index: 6;
+            right: 30px;
+            bottom: 60px;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border-radius: 50%;
+            border: 1px solid rgba(126, 224, 255, 0.4);
+            background: rgba(4, 7, 11, 0.55);
+            color: #7ee0ff;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+        }
+
+        .joy-toggle:hover, .joy-toggle:focus-visible {
+            opacity: 1;
+            outline: none;
+        }
+
+        .joy-toggle.off {
+            color: rgba(232, 239, 246, 0.55);
+            border-color: rgba(156, 194, 220, 0.32);
+        }
+
         @media (max-width: 880px) {
-            .joystick { left: 50%; margin-left: -66px; bottom: 56px; width: 132px; height: 132px; opacity: 0.66; }
-            .joy-knob { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+            .joystick { right: 22px; bottom: 116px; width: 128px; height: 128px; opacity: 0.7; }
+            .joy-knob { width: 54px; height: 54px; margin: -27px 0 0 -27px; }
+            .joy-toggle { right: 24px; bottom: 64px; width: 42px; height: 42px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .joystick { display: none; }
+            .joystick, .joy-toggle { display: none; }
         }
 
         html[lang="zh"] [data-lang-en] {
@@ -507,6 +545,11 @@
         <div class="joystick" id="joystick" aria-hidden="true">
             <div class="joy-knob" id="joyKnob"></div>
         </div>
+        <button class="joy-toggle" id="joyToggle" type="button" aria-label="Hide joystick" title="Show / hide joystick">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="7" r="3"></circle><path d="M12 10v7"></path><path d="M7 21h10"></path>
+            </svg>
+        </button>
 
     </div>
 
@@ -629,6 +672,22 @@
             window.addEventListener("pointermove", jmove);
             window.addEventListener("pointerup", jup);
             window.addEventListener("pointercancel", jup);
+
+            // show/hide toggle (persisted) — keyboard still drives when hidden
+            var toggle = document.getElementById("joyToggle");
+            function setJoyVisible(v) {
+                joy.classList.toggle("hidden", !v);
+                toggle.classList.toggle("off", !v);
+                toggle.setAttribute("aria-label", v ? "Hide joystick" : "Show joystick");
+                if (!v) jup();               // release any active drag when hiding
+                try { localStorage.setItem("xvi-joy", v ? "on" : "off"); } catch (e) {}
+            }
+            toggle.addEventListener("click", function () {
+                setJoyVisible(joy.classList.contains("hidden"));
+            });
+            var jpref = null;
+            try { jpref = localStorage.getItem("xvi-joy"); } catch (e) {}
+            setJoyVisible(jpref !== "off");
 
             // keyboard (WASD / arrows)
             var watched = { w: 1, a: 1, s: 1, d: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
