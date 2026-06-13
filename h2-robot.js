@@ -166,6 +166,7 @@ function buildRig(gltf, kin) {
 
   var IKO = { hip: 0, knee: 0, ankle: 0 };
   var UPD = { phase: 0, bob: 0 };  // reused per-frame return (no allocation in the loop)
+  var bankRoll = 0;                // lean-into-turn, set by the scene
   function legIK(fx, fy, standH) {                    // 2-bone IK in the sagittal plane
     var depth = standH - fy;
     var d = Math.sqrt(fx * fx + depth * depth);
@@ -203,7 +204,7 @@ function buildRig(gltf, kin) {
     // trunk: forward lean, counter-rotation to the swinging legs, lateral sway
     setAngle('waist_pitch_joint', G.waistPitch);
     setAngle('waist_yaw_joint', G.waistYaw * Math.cos(w));
-    setAngle('waist_roll_joint', G.waistRoll * Math.sin(w));
+    setAngle('waist_roll_joint', G.waistRoll * Math.sin(w) + bankRoll); // + lean into turns
 
     leg(-1, phase, standH);
     leg(1, (phase + 0.5) % 1, standH);
@@ -226,5 +227,6 @@ function buildRig(gltf, kin) {
   };
 
   rig.G = G; rig.SIGN = S;
+  rig.setBank = function (b) { bankRoll = b; };
   return rig;
 }

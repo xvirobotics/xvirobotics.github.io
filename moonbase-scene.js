@@ -182,7 +182,9 @@ window.XVIMoonBase = function (canvas) {
   scene.add(earthshine);
   scene.add(new THREE.AmbientLight(0x131a26, 0.6));
 
-  /* sky: stars + earth (fixed to scene, not the scrolling world) */
+  /* sky: stars + earth in a group that tracks the camera (kept at infinity) */
+  var sky = new THREE.Group();
+  scene.add(sky);
   var starGeo = new THREE.BufferGeometry();
   var starN = 1700, starPos = new Float32Array(starN * 3), starCol = new Float32Array(starN * 3);
   for (var i = 0; i < starN; i++) {
@@ -201,15 +203,15 @@ window.XVIMoonBase = function (canvas) {
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
   starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3));
   var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
-  scene.add(stars);
+  sky.add(stars);
 
   var earth = new THREE.Mesh(new THREE.SphereGeometry(2.6, 48, 32), new THREE.MeshBasicMaterial({ map: earthTexture(), fog: false }));
-  earth.position.set(-30, 10, -92); // earthrise behind the base
-  scene.add(earth);
+  earth.position.set(-30, 10, -92); // earthrise, fixed bearing in the lunar sky
+  sky.add(earth);
   var earthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(120,170,255,0.5)', 'rgba(70,120,220,0.16)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   earthGlow.position.copy(earth.position);
   earthGlow.scale.setScalar(8);
-  scene.add(earthGlow);
+  sky.add(earthGlow);
 
   /* scrolling world */
   var world = new THREE.Group();
@@ -498,7 +500,9 @@ window.XVIMoonBase = function (canvas) {
   }
 
   /* ---------- camera control ---------- */
-  var yaw = 0.42, pitch = 0.085, yawV = 0, dist = 5.7, lookY = 1.02, lookX = -0.9;
+  // yaw/pitch are a drag-orbit OFFSET on top of the auto chase angle
+  var yaw = 0, pitch = 0.12, yawV = 0, dist = 5.7, lookY = 1.02, lookX = 0;
+  var camHeading = 0, CAMSIDE = 0.5, camInit = false;
   var dragging = false, lx = 0, ly = 0, fired = false, activeId = null, lastMoveT = 0;
   var W = 0, H = 0;
 
@@ -593,16 +597,18 @@ window.XVIMoonBase = function (canvas) {
       heading += trn * dt;
       px += cos(heading) * spd * dt;
       pz += sin(heading) * spd * dt;
-      gaitT += spd * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
+      // drive the step cadence by forward speed AND turning, so the robot keeps
+      // stepping (not rigidly pivoting) through and on the spot during turns
+      var loco = spd + (spd < -0.01 ? -1 : 1) * Math.abs(trn) * 0.42;
+      gaitT += loco * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
       robotGY += (sampledH(px, pz) - robotGY) * Math.min(1, dt * 6);
     }
 
-    // place the world under the origin-fixed robot: world maps (px,pz)->origin
-    var ch = cos(heading), sh = sin(heading);
-    world.rotation.y = heading;
-    world.position.x = -(px * ch + pz * sh);
-    world.position.z = (px * sh - pz * ch);
-
+    // robot moves through a fixed world; terrain + props stream around it
+    robot.position.x = px;
+    robot.position.z = pz;
+    robot.rotation.y = -heading;          // local +X faces the heading
+    if (rig) rig.setBank(-trn * 0.16);    // bank into the turn
     snapTiles(px, pz);
     wrapRocks(px, pz);
 
@@ -630,15 +636,31 @@ window.XVIMoonBase = function (canvas) {
 
     earth.rotation.y = t * 0.008;
 
-    // camera: orbit with gentle idle sway
-    var yawR = yaw + (reduce ? 0 : 0.1 * Math.sin(t * 0.07));
+    // third-person chase camera: smoothly trails behind the robot's heading
+    // (eases around on turns), with drag (yaw/pitch) as an orbit offset
+    var dh = heading - camHeading;
+    while (dh > Math.PI) dh -= TAU; while (dh < -Math.PI) dh += TAU;
+    camHeading += dh * Math.min(1, dt * 2.6);
+    var tx = robot.position.x, ty = robotGY + lookY, tz = robot.position.z;
+    var thc = camHeading + Math.PI + CAMSIDE + yaw; // behind + 3/4 offset + drag
     var cp = Math.cos(pitch), spv = Math.sin(pitch);
+    var cpx = tx + Math.sin(thc) * dist * cp;
+    var cpy = ty + 0.62 + spv * dist;
+    var cpz = tz + Math.cos(thc) * dist * cp;
+    var kf = camInit ? Math.min(1, dt * 7) : 1; // snap on the first frame
+    camInit = true;
     camera.position.set(
-      lookX + Math.sin(yawR) * dist * cp,
-      lookY + 0.62 + spv * dist,
-      Math.cos(yawR) * dist * cp
+      camera.position.x + (cpx - camera.position.x) * kf,
+      camera.position.y + (cpy - camera.position.y) * kf,
+      camera.position.z + (cpz - camera.position.z) * kf
     );
-    camera.lookAt(lookX, lookY, 0);
+    camera.lookAt(tx, ty, tz);
+
+    // sky and shadow follow so stars/Earth stay at infinity and the shadow
+    // frustum (fixed around its target) tracks the roaming robot
+    sky.position.copy(camera.position);
+    sun.position.set(tx + 14, robotGY + 15, tz + 13);
+    sun.target.position.set(tx, robotGY, tz);
 
     renderer.render(scene, camera);
 
