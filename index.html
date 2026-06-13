@@ -10,6 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="modulepreload" href="vendor/three.module.min.js">
     <link rel="modulepreload" href="vendor/three.core.min.js">
+    <link rel="preload" href="vendor/h2.glb" as="fetch" crossorigin>
+    <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+    </script>
     <link rel="icon" href="logo-new-mark.jpg">
     <style>
         html, body {
@@ -504,6 +508,13 @@
             var booted = false;
             function hideHint() {
                 document.getElementById("orbit-hint").classList.add("hinted");
+            }
+            // the scene's module graph needs import-map support (Safari 16.4+);
+            // on older engines fail fast to a clean static page instead of a
+            // dead canvas with a lingering "drag to orbit" hint
+            if (!HTMLScriptElement.supports || !HTMLScriptElement.supports("importmap")) {
+                hideHint();
+                return;
             }
             function tryBoot() {
                 if (booted || !window.XVIMoonBase || !canvas) return false;

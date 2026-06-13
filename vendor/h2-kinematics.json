@@ -1,0 +1,835 @@
+{
+"root": "pelvis",
+"joints": [
+{
+"name": "left_hip_pitch_joint",
+"type": "revolute",
+"parent": "pelvis",
+"child": "left_hip_pitch_link",
+"origin_xyz": [
+0.0,
+0.08038,
+-0.046407
+],
+"origin_quat": [
+-0.2588196364430847,
+0.0,
+0.0,
+0.9659256678396477
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "left_hip_roll_joint",
+"type": "revolute",
+"parent": "left_hip_pitch_link",
+"child": "left_hip_roll_link",
+"origin_xyz": [
+0.041774,
+0.0635,
+-0.019
+],
+"origin_quat": [
+0.2588196364430847,
+0.0,
+0.0,
+0.9659256678396477
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "left_hip_yaw_joint",
+"type": "revolute",
+"parent": "left_hip_roll_link",
+"child": "left_hip_yaw_link",
+"origin_xyz": [
+-0.028187,
+-0.0095,
+-0.0737
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "left_knee_joint",
+"type": "revolute",
+"parent": "left_hip_yaw_link",
+"child": "left_knee_link",
+"origin_xyz": [
+-0.010308,
+0.022549,
+-0.31959
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "left_ankle_roll_joint",
+"type": "revolute",
+"parent": "left_knee_link",
+"child": "left_ankle_roll_link",
+"origin_xyz": [
+0.032719,
+-0.023002,
+-0.49662
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "left_ankle_pitch_joint",
+"type": "revolute",
+"parent": "left_ankle_roll_link",
+"child": "left_ankle_pitch_link",
+"origin_xyz": [
+-0.014516,
+-0.0373,
+0.0
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "right_hip_pitch_joint",
+"type": "revolute",
+"parent": "pelvis",
+"child": "right_hip_pitch_link",
+"origin_xyz": [
+0.0,
+-0.08038,
+-0.046407
+],
+"origin_quat": [
+0.2588196364430847,
+0.0,
+0.0,
+0.9659256678396477
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "right_hip_roll_joint",
+"type": "revolute",
+"parent": "right_hip_pitch_link",
+"child": "right_hip_roll_link",
+"origin_xyz": [
+0.041774,
+-0.0635,
+-0.019
+],
+"origin_quat": [
+-0.2588196364430847,
+0.0,
+0.0,
+0.9659256678396477
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "right_hip_yaw_joint",
+"type": "revolute",
+"parent": "right_hip_roll_link",
+"child": "right_hip_yaw_link",
+"origin_xyz": [
+-0.028187,
+0.0095,
+-0.0737
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "right_knee_joint",
+"type": "revolute",
+"parent": "right_hip_yaw_link",
+"child": "right_knee_link",
+"origin_xyz": [
+-0.010308,
+-0.022549,
+-0.31959
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "right_ankle_roll_joint",
+"type": "revolute",
+"parent": "right_knee_link",
+"child": "right_ankle_roll_link",
+"origin_xyz": [
+0.032719,
+0.023002,
+-0.49662
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "right_ankle_pitch_joint",
+"type": "revolute",
+"parent": "right_ankle_roll_link",
+"child": "right_ankle_pitch_link",
+"origin_xyz": [
+-0.014516,
+0.0373,
+0.0
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "waist_yaw_joint",
+"type": "revolute",
+"parent": "pelvis",
+"child": "waist_yaw_link",
+"origin_xyz": [
+0.0,
+0.0,
+0.090537
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "waist_roll_joint",
+"type": "revolute",
+"parent": "waist_yaw_link",
+"child": "waist_roll_link",
+"origin_xyz": [
+0.0,
+0.0,
+0.0325
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "waist_pitch_joint",
+"type": "revolute",
+"parent": "waist_roll_link",
+"child": "torso_link",
+"origin_xyz": [
+0.0,
+0.0,
+0.0
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "head_pitch_joint",
+"type": "revolute",
+"parent": "torso_link",
+"child": "head_pitch_link",
+"origin_xyz": [
+-0.0001147,
+-0.0189,
+0.4218
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "head_yaw_joint",
+"type": "revolute",
+"parent": "head_pitch_link",
+"child": "head_yaw_link",
+"origin_xyz": [
+0.0,
+0.0189,
+0.1335
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "left_shoulder_pitch_joint",
+"type": "revolute",
+"parent": "torso_link",
+"child": "left_shoulder_pitch_link",
+"origin_xyz": [
+0.0030848,
+0.11,
+0.36008
+],
+"origin_quat": [
+0.1341642110051869,
+0.0,
+0.0,
+0.990959113427671
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "left_shoulder_roll_joint",
+"type": "revolute",
+"parent": "left_shoulder_pitch_link",
+"child": "left_shoulder_roll_link",
+"origin_xyz": [
+-0.0032074,
+0.059938,
+-0.039865
+],
+"origin_quat": [
+-0.1341642110051869,
+0.0,
+0.0,
+0.990959113427671
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "left_shoulder_yaw_joint",
+"type": "revolute",
+"parent": "left_shoulder_roll_link",
+"child": "left_shoulder_yaw_link",
+"origin_xyz": [
+-0.0025601,
+0.0036752,
+-0.10421
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "left_elbow_joint",
+"type": "revolute",
+"parent": "left_shoulder_yaw_link",
+"child": "left_elbow_link",
+"origin_xyz": [
+0.016655,
+0.02211,
+-0.12792
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "left_wrist_roll_joint",
+"type": "revolute",
+"parent": "left_elbow_link",
+"child": "left_wrist_roll_link",
+"origin_xyz": [
+0.13119,
+-0.021497,
+-0.013769
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "left_wrist_pitch_joint",
+"type": "revolute",
+"parent": "left_wrist_roll_link",
+"child": "left_wrist_pitch_link",
+"origin_xyz": [
+0.037994,
+0.031144,
+0.00045104
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "left_wrist_yaw_joint",
+"type": "revolute",
+"parent": "left_wrist_pitch_link",
+"child": "left_wrist_yaw_link",
+"origin_xyz": [
+0.069283,
+-0.031045,
+-0.0006247
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "left_hand_joint",
+"type": "fixed",
+"parent": "left_wrist_yaw_link",
+"child": "left_hand_link",
+"origin_xyz": [
+0.05771524,
+0.0,
+-0.00014865
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0,
+0,
+1
+]
+},
+{
+"name": "right_shoulder_pitch_joint",
+"type": "revolute",
+"parent": "torso_link",
+"child": "right_shoulder_pitch_link",
+"origin_xyz": [
+0.0030848,
+-0.11,
+0.36008
+],
+"origin_quat": [
+-0.1341642110051869,
+0.0,
+0.0,
+0.990959113427671
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "right_shoulder_roll_joint",
+"type": "revolute",
+"parent": "right_shoulder_pitch_link",
+"child": "right_shoulder_roll_link",
+"origin_xyz": [
+-0.0032074,
+-0.059938,
+-0.039865
+],
+"origin_quat": [
+0.1341642110051869,
+0.0,
+0.0,
+0.990959113427671
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "right_shoulder_yaw_joint",
+"type": "revolute",
+"parent": "right_shoulder_roll_link",
+"child": "right_shoulder_yaw_link",
+"origin_xyz": [
+-0.0025601,
+-0.0036752,
+-0.10421
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "right_elbow_joint",
+"type": "revolute",
+"parent": "right_shoulder_yaw_link",
+"child": "right_elbow_link",
+"origin_xyz": [
+0.016655,
+-0.02211,
+-0.12792
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "right_wrist_roll_joint",
+"type": "revolute",
+"parent": "right_elbow_link",
+"child": "right_wrist_roll_link",
+"origin_xyz": [
+0.13119,
+0.021497,
+-0.013769
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+1.0,
+0.0,
+0.0
+]
+},
+{
+"name": "right_wrist_pitch_joint",
+"type": "revolute",
+"parent": "right_wrist_roll_link",
+"child": "right_wrist_pitch_link",
+"origin_xyz": [
+0.037994,
+-0.031144,
+0.00045104
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+1.0,
+0.0
+]
+},
+{
+"name": "right_wrist_yaw_joint",
+"type": "revolute",
+"parent": "right_wrist_pitch_link",
+"child": "right_wrist_yaw_link",
+"origin_xyz": [
+0.069283,
+0.031045,
+-0.0006247
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0.0,
+0.0,
+1.0
+]
+},
+{
+"name": "right_hand_joint",
+"type": "fixed",
+"parent": "right_wrist_yaw_link",
+"child": "right_hand_link",
+"origin_xyz": [
+0.05824125,
+0.0,
+-0.00017221
+],
+"origin_quat": [
+0.0,
+0.0,
+0.0,
+1.0
+],
+"axis": [
+0,
+0,
+1
+]
+}
+],
+"links": {
+"pelvis": {
+"mesh": "pelvis.stl"
+},
+"left_hip_pitch_link": {
+"mesh": "left_hip_pitch_link.stl"
+},
+"left_hip_roll_link": {
+"mesh": "left_hip_roll_link.stl"
+},
+"left_hip_yaw_link": {
+"mesh": "left_hip_yaw_link.stl"
+},
+"left_knee_link": {
+"mesh": "left_knee_link.stl"
+},
+"left_ankle_roll_link": {
+"mesh": "left_ankle_roll_link.stl"
+},
+"left_ankle_pitch_link": {
+"mesh": "left_ankle_pitch_link.stl"
+},
+"right_hip_pitch_link": {
+"mesh": "right_hip_pitch_link.stl"
+},
+"right_hip_roll_link": {
+"mesh": "right_hip_roll_link.stl"
+},
+"right_hip_yaw_link": {
+"mesh": "right_hip_yaw_link.stl"
+},
+"right_knee_link": {
+"mesh": "right_knee_link.stl"
+},
+"right_ankle_roll_link": {
+"mesh": "right_ankle_roll_link.stl"
+},
+"right_ankle_pitch_link": {
+"mesh": "right_ankle_pitch_link.stl"
+},
+"waist_yaw_link": {
+"mesh": "waist_yaw_link.stl"
+},
+"waist_roll_link": {
+"mesh": "waist_roll_link.stl"
+},
+"torso_link": {
+"mesh": "torso_link.stl"
+},
+"head_pitch_link": {
+"mesh": "head_pitch_link.stl"
+},
+"head_yaw_link": {
+"mesh": "head_yaw_link.stl"
+},
+"left_shoulder_pitch_link": {
+"mesh": "left_shoulder_pitch_link.stl"
+},
+"left_shoulder_roll_link": {
+"mesh": "left_shoulder_roll_link.stl"
+},
+"left_shoulder_yaw_link": {
+"mesh": "left_shoulder_yaw_link.stl"
+},
+"left_elbow_link": {
+"mesh": "left_elbow_link.stl"
+},
+"left_wrist_roll_link": {
+"mesh": "left_wrist_roll_link.stl"
+},
+"left_wrist_pitch_link": {
+"mesh": "left_wrist_pitch_link.stl"
+},
+"left_wrist_yaw_link": {
+"mesh": "left_wrist_yaw_link.stl"
+},
+"left_hand_link": {
+"mesh": "left_hand_link.stl"
+},
+"right_shoulder_pitch_link": {
+"mesh": "right_shoulder_pitch_link.stl"
+},
+"right_shoulder_roll_link": {
+"mesh": "right_shoulder_roll_link.stl"
+},
+"right_shoulder_yaw_link": {
+"mesh": "right_shoulder_yaw_link.stl"
+},
+"right_elbow_link": {
+"mesh": "right_elbow_link.stl"
+},
+"right_wrist_roll_link": {
+"mesh": "right_wrist_roll_link.stl"
+},
+"right_wrist_pitch_link": {
+"mesh": "right_wrist_pitch_link.stl"
+},
+"right_wrist_yaw_link": {
+"mesh": "right_wrist_yaw_link.stl"
+},
+"right_hand_link": {
+"mesh": "right_hand_link.stl"
+}
+}
+}

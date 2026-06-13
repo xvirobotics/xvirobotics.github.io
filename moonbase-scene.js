@@ -2,6 +2,7 @@
    robot walking on the moon past a SpaceX-style base. Self-hosted Three.js,
    no external requests. */
 import * as THREE from './vendor/three.module.min.js';
+import { createH2Robot, GAIT } from './h2-robot.js';
 
 var TAU = Math.PI * 2;
 
@@ -11,26 +12,8 @@ function hash2(i, j) {
   return n - Math.floor(n);
 }
 
-/* ---------- gait (verified IK: max reach 0.772 < 0.796 limit) ---------- */
-var CYC = 2.0, STEP = 0.34, LIFT = 0.15, STANCE = 0.5;
-var SPEED = STEP / (STANCE * CYC);
-var THIGH = 0.315, SHIN = 0.487, HIP_Y = 0.81, ANKLE_Y = 0.07;
-
-function footTrack(lp, out) {
-  if (lp < STANCE) {
-    var u = lp / STANCE;
-    out.x = STEP / 2 - STEP * u;
-    out.y = 0;
-    out.air = 0;
-  } else {
-    var u2 = (lp - STANCE) / (1 - STANCE);
-    var e = u2 * u2 * (3 - 2 * u2);
-    out.x = -STEP / 2 + STEP * e;
-    var sl = Math.sin(Math.PI * u2);
-    out.y = LIFT * Math.sqrt(sl > 0 ? sl : 0);
-    out.air = sl;
-  }
-}
+// treadmill speed locked to the H2 walk stride (m/s)
+var SPEED = GAIT.stepLen / (GAIT.STANCE * GAIT.CYC);
 
 /* ---------- procedural textures ---------- */
 function glowTexture(inner, outer) {
@@ -209,7 +192,7 @@ window.XVIMoonBase = function (canvas) {
 
   /* lights */
   var sun = new THREE.DirectionalLight(0xfff3e2, 3.6);
-  sun.position.set(-20, 14, 16);
+  sun.position.set(14, 15, 13);
   sun.castShadow = true;
   sun.shadow.mapSize.set(COARSE ? 1024 : 2048, COARSE ? 1024 : 2048);
   sun.shadow.camera.left = -9; sun.shadow.camera.right = 9;
@@ -269,7 +252,6 @@ window.XVIMoonBase = function (canvas) {
   }
 
   /* ---------- materials for hardware ---------- */
-  var matWhite = new THREE.MeshStandardMaterial({ color: 0xe3e7ec, metalness: 0.32, roughness: 0.34 });
   var matDark = new THREE.MeshStandardMaterial({ color: 0x14181d, metalness: 0.7, roughness: 0.45 });
   var matHull = new THREE.MeshStandardMaterial({ color: 0xd2d5da, metalness: 0.45, roughness: 0.42 });
   var matHab = new THREE.MeshStandardMaterial({ color: 0xb9bcc2, metalness: 0.25, roughness: 0.6 });
@@ -288,127 +270,29 @@ window.XVIMoonBase = function (canvas) {
     return sp;
   }
 
-  /* ---------- the robot (H2 proportions, solid panels) ---------- */
+  /* ---------- the robot: real Unitree H2 URDF meshes, loaded async ---------- */
+  // outer holder owns world placement + the vertical walk bob; inner group spins
+  // the URDF's Z-up model upright into the scene's Y-up frame
   var robot = new THREE.Group();
   scene.add(robot);
+  var robotZ = new THREE.Group();
+  robotZ.rotation.x = -Math.PI / 2;
+  robot.add(robotZ);
 
-  function shadowed(mesh) {
-    mesh.castShadow = true;
-    return mesh;
-  }
-  function capsule(r, len, mat) {
-    return shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat));
-  }
-
-  var pelvisG = new THREE.Group(); // animated: y bob, z sway, yaw
-  robot.add(pelvisG);
-
-  var pelvis = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.15, 0.28), matWhite));
-  pelvis.position.y = 0.06;
-  pelvisG.add(pelvis);
-  var hipL = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), matDark));
-  hipL.position.set(0, 0, -0.13);
-  var hipR = hipL.clone(); hipR.position.z = 0.13;
-  pelvisG.add(hipL, hipR);
-
-  var torsoG = new THREE.Group(); // lean + counter-yaw
-  torsoG.position.y = 0.13;
-  pelvisG.add(torsoG);
-
-  var waist = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.1, 0.14, 18), matDark));
-  waist.position.y = 0.07;
-  torsoG.add(waist);
-
-  var chest = capsule(0.155, 0.2, matWhite);
-  chest.position.y = 0.33;
-  chest.scale.set(0.74, 1, 1.22);
-  torsoG.add(chest);
-  var chestPlate = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.24), matWhite));
-  chestPlate.position.set(0.1, 0.36, 0);
-  torsoG.add(chestPlate);
-  var chestLight = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.012, 12), matCyan);
-  chestLight.rotation.z = Math.PI / 2;
-  chestLight.position.set(0.128, 0.41, 0);
-  torsoG.add(chestLight);
-  var chestGlow = glowSprite(cyanGlowTex, 0.16);
-  chestGlow.position.set(0.15, 0.41, 0);
-  torsoG.add(chestGlow);
-
-  var podL = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.062, 18, 14), matWhite));
-  podL.position.set(0, 0.5, -0.185);
-  var podR = podL.clone(); podR.position.z = 0.185;
-  torsoG.add(podL, podR);
-
-  var neck = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.08, 14), matDark));
-  neck.position.y = 0.585;
-  torsoG.add(neck);
-
-  var headG = new THREE.Group();
-  headG.position.y = 0.69;
-  torsoG.add(headG);
-  var head = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.092, 24, 18), matWhite));
-  head.scale.set(0.94, 1.06, 0.94);
-  headG.add(head);
-  var visor = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.052, 0.13), matVisor));
-  visor.position.set(0.078, 0.008, 0);
-  headG.add(visor);
-  var visorGlow = glowSprite(cyanGlowTex, 0.27);
-  visorGlow.position.set(0.115, 0.008, 0);
-  headG.add(visorGlow);
-
-  function buildArm(side) { // side: -1 left(z-), +1 right(z+)
-    var sh = new THREE.Group();
-    sh.position.set(0, 0.5, side * 0.185);
-    torsoG.add(sh);
-    var ua = capsule(0.048, 0.13, matWhite);
-    ua.position.y = -0.115;
-    sh.add(ua);
-    var elbowG = new THREE.Group();
-    elbowG.position.y = -0.23;
-    sh.add(elbowG);
-    elbowG.add(shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), matDark)));
-    var fa = capsule(0.04, 0.16, matWhite);
-    fa.position.y = -0.13;
-    elbowG.add(fa);
-    var wristG = new THREE.Group();
-    wristG.position.y = -0.26;
-    elbowG.add(wristG);
-    wristG.add(shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.038, 14, 10), matDark)));
-    var hand = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.115, 0.06), matWhite));
-    hand.position.y = -0.075;
-    wristG.add(hand);
-    var thumb = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.05, 0.022), matWhite));
-    thumb.position.set(0.028, -0.045, side * -0.02);
-    wristG.add(thumb);
-    return { sh: sh, elbow: elbowG, wrist: wristG };
-  }
-  var armL = buildArm(-1), armR = buildArm(1);
-
-  function buildLeg(side) {
-    var hip = new THREE.Group();
-    hip.position.set(0, 0, side * 0.13);
-    pelvisG.add(hip);
-    var th2 = capsule(0.06, 0.19, matWhite);
-    th2.position.y = -0.16;
-    hip.add(th2);
-    var kneeG = new THREE.Group();
-    kneeG.position.y = -THIGH;
-    hip.add(kneeG);
-    kneeG.add(shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.058, 16, 12), matDark)));
-    var shin = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.034, 0.4, 16), matWhite));
-    shin.position.y = -0.235;
-    kneeG.add(shin);
-    var ankleG = new THREE.Group();
-    ankleG.position.y = -SHIN;
-    ankleG.position.z = side * -0.035; // feet track inside the hips
-    kneeG.add(ankleG);
-    ankleG.add(shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.042, 14, 10), matDark)));
-    var foot = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.05, 0.095), matWhite));
-    foot.position.set(0.055, -0.045, 0);
-    ankleG.add(foot);
-    return { hip: hip, knee: kneeG, ankle: ankleG };
-  }
-  var legL = buildLeg(-1), legR = buildLeg(1);
+  var rig = null, groundY0 = 0.78, chestGlow = null, visorGlow = null;
+  createH2Robot().then(function (r) {
+    rig = r;
+    robotZ.add(rig.root);
+    groundY0 = rig.LEG * 0.93 + 0.055; // hip height that drops the planted foot to y0
+    // brand accents on the real head/torso links (URDF frame: +x fwd, +y left, +z up)
+    chestGlow = glowSprite(cyanGlowTex, 0.14);
+    chestGlow.position.set(0.12, 0, 0.30);
+    if (rig.torsoGroup) rig.torsoGroup.add(chestGlow);
+    visorGlow = glowSprite(cyanGlowTex, 0.2);
+    visorGlow.position.set(0.11, 0.02, 0.04);
+    if (rig.headGroup) rig.headGroup.add(visorGlow);
+    kick();
+  }).catch(function (e) { if (window.console) console.warn('H2 load failed', e); });
 
   /* ---------- the base (SpaceX-style render: domes + modules + ships) ---------- */
   var base = new THREE.Group();
@@ -644,72 +528,20 @@ window.XVIMoonBase = function (canvas) {
   }
 
   /* ---------- animation ---------- */
-  var FOOT = { x: 0, y: 0, air: 0 };
   var prevLp = [0, 0.5];
   var scroll = 0, raf = 0, last = performance.now(), t0 = last;
   var ema = 16, quality = 2, maxQ = 2, drops = 0; // pixel-ratio ladder state
 
-  function legPose(leg, lp) {
-    footTrack(lp, FOOT);
-    var ax = FOOT.x, ay = ANKLE_Y + FOOT.y;
-    var hy = legHipY;
-    var dx = ax - 0, dy = ay - hy;
-    var d = Math.sqrt(dx * dx + dy * dy);
-    var maxD = THIGH + SHIN - 0.004;
-    if (d > maxD) d = maxD;
-    var a1 = Math.atan2(dx, -dy);
-    var cosA = (THIGH * THIGH + d * d - SHIN * SHIN) / (2 * THIGH * d);
-    cosA = cosA > 1 ? 1 : (cosA < -1 ? -1 : cosA);
-    var A = Math.acos(cosA);
-    var thighRot = a1 + A;
-    var cosK = (THIGH * THIGH + SHIN * SHIN - d * d) / (2 * THIGH * SHIN);
-    cosK = cosK > 1 ? 1 : (cosK < -1 ? -1 : cosK);
-    var knee = Math.PI - Math.acos(cosK);
-    leg.hip.rotation.z = thighRot;
-    leg.knee.rotation.z = -knee;
-    var shinAbs = thighRot - knee;
-    leg.ankle.rotation.z = -shinAbs - FOOT.air * 0.32;
-  }
-
-  var legHipY = HIP_Y;
-
+  var prevPh = 0.0;
   function pose(t) {
-    var phase = reduce ? 0.18 : (t / CYC) % 1;
-    var bob = 0.034 * Math.sin(2 * TAU * phase + 0.7);
-    var sway = -0.026 * Math.sin(TAU * phase);
-    var twist = 0.09 * Math.cos(TAU * phase);
-
-    legHipY = HIP_Y + bob;
-    pelvisG.position.set(0, legHipY, sway);
-    pelvisG.rotation.y = twist;
-    torsoG.rotation.y = -twist * 1.5;
-    torsoG.rotation.z = -0.085; // forward lean
-
-    var lpL = phase, lpR = (phase + 0.5) % 1;
-    legPose(legL, lpL);
-    legPose(legR, lpR);
-
-    // arms: swing opposite the legs, slight outward carry, fixed elbow bend
-    var swing = 0.38 * Math.cos(TAU * phase);
-    armL.sh.rotation.z = -swing;
-    armR.sh.rotation.z = swing;
-    armL.sh.rotation.x = 0.1;
-    armR.sh.rotation.x = -0.1;
-    armL.elbow.rotation.z = 0.62 - swing * 0.25;
-    armR.elbow.rotation.z = 0.62 + swing * 0.25;
-    armL.wrist.rotation.z = 0.18;
-    armR.wrist.rotation.z = 0.18;
-
-    headG.rotation.z = 0.05; // look slightly up toward the horizon
-
+    if (!rig) return;
+    var info = rig.update(reduce ? 0.18 * GAIT.CYC : t);
+    robot.position.y = groundY0 + info.bob;
     if (!reduce) {
-      var lps = [lpL, lpR];
-      for (var leg = 0; leg < 2; leg++) {
-        if (lps[leg] < prevLp[leg] - 0.5 || (prevLp[leg] > STANCE && lps[leg] < 0.1)) {
-          puff(STEP / 2, leg === 0 ? -0.095 : 0.095);
-        }
-        prevLp[leg] = lps[leg];
-      }
+      var ph = info.phase;
+      if (ph < prevPh) puff(0.05, -0.1);                 // left heel strike (phase wrap)
+      if (prevPh < 0.5 && ph >= 0.5) puff(0.05, 0.1);    // right heel strike
+      prevPh = ph;
     }
   }
 
@@ -771,7 +603,8 @@ window.XVIMoonBase = function (canvas) {
     matRed.emissiveIntensity = 2.5 * bOn;
     beaconGlow.material.opacity = bOn;
     var pulse = 0.75 + 0.25 * Math.sin(t * 2.2);
-    chestGlow.material.opacity = pulse;
+    if (chestGlow) chestGlow.material.opacity = pulse;
+    if (rig) rig.visorMat.emissiveIntensity = 2.2 + 0.8 * pulse;
     matCyan.emissiveIntensity = 1.9 + 0.7 * pulse;
 
     earth.rotation.y = t * 0.008;
