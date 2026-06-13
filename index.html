@@ -264,6 +264,51 @@
             opacity: 0;
         }
 
+        .joystick {
+            position: absolute;
+            z-index: 5;
+            left: 30px;
+            bottom: 64px;
+            width: 116px;
+            height: 116px;
+            border-radius: 50%;
+            border: 1px solid rgba(126, 224, 255, 0.32);
+            background: radial-gradient(circle at 50% 50%, rgba(126, 224, 255, 0.06), rgba(4, 7, 11, 0.28));
+            box-shadow: 0 0 24px rgba(126, 224, 255, 0.08), inset 0 0 18px rgba(126, 224, 255, 0.05);
+            touch-action: none;
+            cursor: grab;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .joystick:hover, .joystick.active {
+            opacity: 0.92;
+        }
+
+        .joy-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 48px;
+            height: 48px;
+            margin: -24px 0 0 -24px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 38% 34%, #cdeeff, #7ee0ff 55%, #2aa6cf);
+            box-shadow: 0 0 16px rgba(126, 224, 255, 0.55);
+            transition: transform 0.12s ease-out;
+            will-change: transform;
+            pointer-events: none;
+        }
+
+        @media (max-width: 880px) {
+            .joystick { left: 50%; margin-left: -66px; bottom: 56px; width: 132px; height: 132px; opacity: 0.66; }
+            .joy-knob { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .joystick { display: none; }
+        }
+
         html[lang="zh"] [data-lang-en] {
             display: none;
         }
@@ -455,9 +500,13 @@
             <div>© <span id="year">2025</span> XVI ROBOTICS</div>
             <div class="orbit-hint" id="orbit-hint">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 7a5 5 0 1 0 1.5-3.6"></path><path d="M2 1.5V4h2.5" fill="none"></path></svg>
-                <span data-lang-en>DRAG TO ORBIT</span><span data-lang-cn>拖动旋转视角</span>
+                <span data-lang-en>WASD / JOYSTICK TO WALK · DRAG TO LOOK</span><span data-lang-cn>WASD / 摇杆控制行走 · 拖动转视角</span>
             </div>
         </footer>
+
+        <div class="joystick" id="joystick" aria-hidden="true">
+            <div class="joy-knob" id="joyKnob"></div>
+        </div>
 
     </div>
 
@@ -535,6 +584,68 @@
                 if (tries++ < 150) setTimeout(poll, 80);
                 else if (!booted) hideHint();
             })();
+        })();
+
+        /* ---------- locomotion: joystick + keyboard drive the H2 ---------- */
+        (function controls() {
+            var joyFwd = 0, joyTurn = 0, joyOn = false;
+            var keys = {};
+            function send() {
+                if (!window.XVIControl) return;
+                if (joyOn) { window.XVIControl.drive(joyFwd, joyTurn, true); return; }
+                var f = (keys.w || keys.ArrowUp ? 1 : 0) - (keys.s || keys.ArrowDown ? 1 : 0);
+                var t = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0);
+                if (f || t) window.XVIControl.drive(f, t, true);
+                else window.XVIControl.drive(0, 0, false);
+            }
+
+            // on-screen joystick
+            var joy = document.getElementById("joystick");
+            var knob = document.getElementById("joyKnob");
+            var R = 38, jid = null;
+            function setKnob(dx, dy) { knob.style.transform = "translate(" + dx + "px," + dy + "px)"; }
+            function jdown(e) {
+                jid = e.pointerId; joyOn = true; joy.classList.add("active");
+                try { joy.setPointerCapture(e.pointerId); } catch (err) {}
+                jmove(e); e.preventDefault();
+            }
+            function jmove(e) {
+                if (!joyOn || e.pointerId !== jid) return;
+                var r = joy.getBoundingClientRect();
+                var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+                var m = Math.hypot(dx, dy);
+                if (m > R) { dx = dx / m * R; dy = dy / m * R; }
+                setKnob(dx, dy);
+                joyFwd = -dy / R;          // up = forward
+                joyTurn = dx / R;          // right = turn right
+                send();
+            }
+            function jup(e) {
+                if (e && e.pointerId !== jid) return;
+                joyOn = false; jid = null; joy.classList.remove("active");
+                setKnob(0, 0); joyFwd = joyTurn = 0; send();
+            }
+            joy.addEventListener("pointerdown", jdown);
+            window.addEventListener("pointermove", jmove);
+            window.addEventListener("pointerup", jup);
+            window.addEventListener("pointercancel", jup);
+
+            // keyboard (WASD / arrows)
+            var watched = { w: 1, a: 1, s: 1, d: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
+            window.addEventListener("keydown", function (e) {
+                var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+                if (!watched[k]) return;
+                keys[k] = true; e.preventDefault(); send();
+            });
+            window.addEventListener("keyup", function (e) {
+                var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+                if (!watched[k]) return;
+                keys[k] = false; send();
+            });
+            // a keyup can be missed on tab-out/focus-loss — clear so the robot doesn't run away
+            function clearKeys() { keys = {}; if (!joyOn) send(); }
+            window.addEventListener("blur", clearKeys);
+            document.addEventListener("visibilitychange", function () { if (document.hidden) clearKeys(); });
         })();
     </script>
 </body>
