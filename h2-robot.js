@@ -79,6 +79,41 @@ function buildRig(gltf, kin) {
     }
   }
 
+  // black face screen: overlay the forward-facing triangles of the head mesh
+  // with a dark matte plate (the real H2 has a white helmet + dark face)
+  var matFace = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: 0.5, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  (function addFace() {
+    var hg = groups['head_yaw_link'];
+    var hm = (meshByLink['head_yaw_link'] || [])[0];
+    if (!hg || !hm) return;
+    // derive the head's local "forward" from its rest world orientation rather
+    // than assuming an axis (the head link frame is rotated by the joint chain)
+    groups[kin.root].updateWorldMatrix(true, true);
+    var hwq = new THREE.Quaternion();
+    hg.getWorldQuaternion(hwq);
+    hwq.invert();
+    var fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(hwq); // walking dir in head-local
+    var g = hm.geometry.index ? hm.geometry.toNonIndexed() : hm.geometry;
+    var p = g.getAttribute('position'), nrm = g.getAttribute('normal');
+    var keep = [];
+    for (var f = 0; f < p.count; f += 3) {
+      var nx = (nrm.getX(f) + nrm.getX(f + 1) + nrm.getX(f + 2)) / 3;
+      var ny = (nrm.getY(f) + nrm.getY(f + 1) + nrm.getY(f + 2)) / 3;
+      var nz = (nrm.getZ(f) + nrm.getZ(f + 1) + nrm.getZ(f + 2)) / 3;
+      if (nx * fwd.x + ny * fwd.y + nz * fwd.z > 0.12) { // forward-facing head triangles => the face
+        for (var k = 0; k < 3; k++) keep.push(p.getX(f + k), p.getY(f + k), p.getZ(f + k));
+      }
+    }
+    if (!keep.length) return;
+    var fg = new THREE.BufferGeometry();
+    fg.setAttribute('position', new THREE.Float32BufferAttribute(keep, 3));
+    fg.computeVertexNormals();
+    var face = new THREE.Mesh(fg, matFace);
+    face.castShadow = false;
+    face.receiveShadow = false;
+    hg.add(face);
+  })();
+
   var root = groups[kin.root];
 
   // leg segment lengths from the URDF origins (for IK)
