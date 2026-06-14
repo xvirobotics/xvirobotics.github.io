@@ -186,7 +186,7 @@ window.XVIMoonBase = function (canvas) {
   var DPR = window.devicePixelRatio || 1;
   var MAXPR = COARSE ? 1.5 : 2; // dpr-3 phones don't need a 2x buffer
 
-  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: DPR <= 1.5, powerPreference: 'high-performance' });
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: 'high-performance' });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -204,10 +204,13 @@ window.XVIMoonBase = function (canvas) {
   var composer = new EffectComposer(renderer,
     new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: rtSamples }));
   composer.addPass(new RenderPass(scene, camera));
-  var bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), COARSE ? 0.55 : 0.75, 0.6, 0.9);
+  // bloom in linear HDR — high threshold so only true emissives/glare bloom,
+  // not merely sun-lit white surfaces
+  var bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), COARSE ? 0.5 : 0.7, 0.5, 1.5);
   composer.addPass(bloom);
-  // filmic grade (linear HDR, before the ACES OutputPass): cool-shadow tint,
-  // gentle saturation/contrast, vignette, faint grain
+  composer.addPass(new OutputPass()); // ACES tone map + sRGB
+  // filmic grade runs LAST, in display-referred sRGB, so the 0.5 contrast pivot
+  // and vignette/grain behave correctly (no shadow crush)
   var gradePass = new ShaderPass({
     uniforms: { tDiffuse: { value: null }, uTime: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -215,16 +218,15 @@ window.XVIMoonBase = function (canvas) {
       'varying vec2 vUv; uniform sampler2D tDiffuse; uniform float uTime;' +
       'void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb;' +
       ' float l = dot(c, vec3(0.2126,0.7152,0.0722));' +
-      ' c = mix(vec3(l), c, 1.12);' +                                  // saturation
-      ' c = (c - 0.5) * 1.06 + 0.5;' +                                 // contrast
-      ' c += vec3(-0.012,0.004,0.022) * (1.0 - smoothstep(0.0,0.6,l));' + // teal shadow lift
-      ' vec2 q = vUv - 0.5; c *= clamp(1.0 - dot(q,q) * 0.9, 0.0, 1.0);' + // vignette
+      ' c = mix(vec3(l), c, 1.1);' +                                   // saturation
+      ' c = (c - 0.5) * 1.05 + 0.5;' +                                 // contrast (display space)
+      ' c += vec3(-0.01,0.004,0.02) * (1.0 - smoothstep(0.0,0.4,l));' + // teal shadow lift
+      ' vec2 q = vUv - 0.5; c *= clamp(1.0 - dot(q,q) * 0.85, 0.0, 1.0);' + // vignette
       ' float g = fract(sin(dot(vUv, vec2(12.9898,78.233)) + uTime) * 43758.5453);' +
-      ' c += (g - 0.5) * 0.014;' +                                     // grain
-      ' gl_FragColor = vec4(max(c, 0.0), 1.0); }'
+      ' c += (g - 0.5) * 0.012;' +                                     // grain
+      ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'
   });
   composer.addPass(gradePass);
-  composer.addPass(new OutputPass()); // applies ACES tone map + sRGB last
 
   /* ---------- image-based lighting: procedural space env for reflections ---------- */
   (function setupEnv() {
@@ -702,6 +704,7 @@ window.XVIMoonBase = function (canvas) {
       quality++;
       applyQuality();
     }
+    bloom.enabled = quality > 0; // shed the bloom blur passes on the lowest tier
 
     if (!dragging && !reduce) {
       yaw += yawV * dt;

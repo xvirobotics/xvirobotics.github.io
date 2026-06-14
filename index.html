@@ -22,19 +22,18 @@
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"Organization","name":"XVI Robotics","alternateName":"十六号机器人","url":"https://xvirobotics.com/","logo":"https://xvirobotics.com/assets/logo-color.png","description":"XVI Robotics builds foundation models for humanoid robots — bridging intelligence and embodiment to unlock the next era of human civilization.","email":"floodsung@xvirobotics.com","foundingDate":"2025"}
     </script>
-    <link rel="preload" href="vendor/fonts/space-grotesk-500.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="vendor/fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="modulepreload" href="vendor/three.module.min.js">
     <link rel="modulepreload" href="vendor/three.core.min.js">
-    <link rel="preload" href="vendor/h2.glb" as="fetch" crossorigin>
+    <link rel="preload" href="vendor/h2.glb" as="fetch">
+    <link rel="preload" href="vendor/h2-kinematics.json" as="fetch">
     <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
     </script>
     <link rel="icon" href="logo-new-mark.jpg">
     <style>
         /* self-hosted fonts (no external requests; latin subset + zh subset) */
-        @font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 300; font-display: swap; src: url(vendor/fonts/space-grotesk-300.woff2) format('woff2'); }
-        @font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 400; font-display: swap; src: url(vendor/fonts/space-grotesk-400.woff2) format('woff2'); }
-        @font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 500; font-display: swap; src: url(vendor/fonts/space-grotesk-500.woff2) format('woff2'); }
+        @font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 300 500; font-display: swap; src: url(vendor/fonts/space-grotesk.woff2) format('woff2'); }
         @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url(vendor/fonts/ibm-plex-mono-400.woff2) format('woff2'); }
         @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url(vendor/fonts/ibm-plex-mono-500.woff2) format('woff2'); }
         @font-face { font-family: 'Noto Sans SC'; font-style: normal; font-weight: 300 500; font-display: swap; src: url(vendor/fonts/noto-sans-sc-sub.woff2) format('woff2'); }
@@ -843,7 +842,8 @@
             (function demo() {
                 var t0 = performance.now(), DUR = 2600;
                 function tick(now) {
-                    if (hintGone || joyOn || joy.classList.contains("hidden")) { setKnob(0, 0); return; }
+                    if (joyOn) return;                 // a real drag owns the knob — don't stomp it
+                    if (hintGone || joy.classList.contains("hidden")) { setKnob(0, 0); return; }
                     var e = (now - t0) / DUR;
                     if (e >= 1) { setKnob(0, 0); return; }
                     var a = e * Math.PI * 4, r = 16 * Math.sin(Math.PI * e);
@@ -859,7 +859,11 @@
             jumpBtn.addEventListener("click", doJump);
             jumpBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); });
             window.addEventListener("keydown", function (e) {
-                if (e.code === "Space" || e.key === " ") { e.preventDefault(); doJump(); }
+                if (e.code !== "Space" && e.key !== " ") return;
+                if (e.repeat) return;                  // one press = one jump (no key-repeat hopping)
+                var a = document.activeElement;        // don't steal Space from a focused button/link
+                if (a && (a.tagName === "BUTTON" || a.tagName === "A" || a.tagName === "INPUT" || a.isContentEditable)) return;
+                e.preventDefault(); doJump();
             });
 
             /* ---------- procedural audio (ambient pad + servo footsteps) ---------- */
@@ -906,7 +910,9 @@
             var photoBtn = document.getElementById("photoBtn"), photoOn = false;
             function setPhoto(on) { photoOn = on; document.body.classList.toggle("photo", on); }
             photoBtn.addEventListener("click", function () { setPhoto(true); });
-            window.addEventListener("pointerdown", function () { if (photoOn) setPhoto(false); }, true);
+            window.addEventListener("pointerdown", function (e) {
+                if (photoOn) { setPhoto(false); e.stopPropagation(); e.preventDefault(); } // exit without also starting a camera drag
+            }, true);
             window.addEventListener("keydown", function (e) {
                 if (e.key === "p" || e.key === "P") setPhoto(!photoOn);
                 if (e.key === "Escape" && photoOn) setPhoto(false);
