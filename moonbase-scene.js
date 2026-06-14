@@ -650,6 +650,7 @@ window.XVIMoonBase = function (canvas) {
   // stand; robotGY seeded to ground height (no startup pop / foot burial)
   var gaitT = 0.05 * GAIT.CYC, robotGY = sampledH(0, 0);
   var CRUISE = 0.5, MAXSPD = 1.7, MAXTRN = 1.0;
+  var jumpY = 0, jumpV = 0; // low-gravity hop
   function drive(fwd, turn, active) {
     inFwd = fwd < -1 ? -1 : (fwd > 1 ? 1 : fwd);
     inTurn = turn < -1 ? -1 : (turn > 1 ? 1 : turn);
@@ -657,20 +658,27 @@ window.XVIMoonBase = function (canvas) {
     if (!fired) { fired = true; window.dispatchEvent(new CustomEvent('xvi-orbit')); }
     kick();
   }
+  function jump() {
+    if (reduce || jumpY > 0.02) return;     // only from the ground
+    jumpV = 3.4;                             // low-g launch
+    for (var k = 0; k < dustPool.length; k++) puff(px + (Math.random() - 0.5) * 0.5, robotGY, pz + (Math.random() - 0.5) * 0.5);
+    kick();
+  }
 
   var raf = 0, last = performance.now(), t0 = last;
   var ema = 16, quality = 2, maxQ = 2, drops = 0; // pixel-ratio ladder state
 
   var prevPh = 0.0, sin = Math.sin, cos = Math.cos, moving = false;
+  function step() { try { window.dispatchEvent(new CustomEvent('xvi-step')); } catch (e) {} }
   function pose() {
     if (!rig) return;
     var info = rig.update(gaitT);  // gaitT is frozen when idle -> static stance
-    robot.position.y = robotGY + groundY0 + info.bob;
-    if (moving) {
+    robot.position.y = robotGY + groundY0 + info.bob + jumpY;
+    if (moving && jumpY < 0.02) {
       var ph = info.phase, ch = cos(heading), sh = sin(heading);
       // footfall puffs at the walker's world-local feet (so they stay on the ground)
-      if (ph < prevPh) puff(px - sh * 0.1, robotGY, pz + ch * 0.1);          // left heel strike
-      if (prevPh < 0.5 && ph >= 0.5) puff(px + sh * 0.1, robotGY, pz - ch * 0.1); // right heel strike
+      if (ph < prevPh) { puff(px - sh * 0.1, robotGY, pz + ch * 0.1); step(); }          // left heel strike
+      if (prevPh < 0.5 && ph >= 0.5) { puff(px + sh * 0.1, robotGY, pz - ch * 0.1); step(); } // right heel strike
     }
     prevPh = info.phase;
   }
@@ -723,7 +731,16 @@ window.XVIMoonBase = function (canvas) {
     var loco = spd + tsgn * Math.abs(trn) * 0.42;
     gaitT += loco * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
     robotGY += (sampledH(px, pz) - robotGY) * Math.min(1, dt * 6);
-    moving = inActive || Math.abs(spd) > 0.02 || Math.abs(trn) > 0.02;
+    // low-gravity hop arc + landing dust
+    if (jumpV !== 0 || jumpY > 0) {
+      jumpV -= 4.0 * dt;
+      jumpY += jumpV * dt;
+      if (jumpY <= 0) {
+        jumpY = 0; jumpV = 0;
+        for (var jk = 0; jk < dustPool.length; jk++) puff(px + (Math.random() - 0.5) * 0.6, robotGY, pz + (Math.random() - 0.5) * 0.6);
+      }
+    }
+    moving = inActive || jumpY > 0 || Math.abs(spd) > 0.02 || Math.abs(trn) > 0.02;
 
     // robot moves through a fixed world; terrain + props stream around it
     robot.position.x = px;
@@ -859,7 +876,7 @@ window.XVIMoonBase = function (canvas) {
   kick();
 
   // locomotion control surface for the on-screen joystick + keyboard (index.html)
-  window.XVIControl = { drive: drive };
+  window.XVIControl = { drive: drive, jump: jump };
   // headless test hook: ?drive=<fwd>,<turn> applies a constant input
   try {
     var qd = (location.search.match(/[?&]drive=([^&]+)/) || [])[1];
