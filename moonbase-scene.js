@@ -197,6 +197,31 @@ window.XVIMoonBase = function (canvas) {
   composer.addPass(gradePass);
   composer.addPass(new OutputPass()); // applies ACES tone map + sRGB last
 
+  /* ---------- image-based lighting: procedural space env for reflections ---------- */
+  (function setupEnv() {
+    var c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    var g = c.getContext('2d');
+    var grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0.0, '#01020a');  // zenith
+    grad.addColorStop(0.46, '#0b1322'); // sky toward horizon
+    grad.addColorStop(0.52, '#14181f'); // horizon haze
+    grad.addColorStop(1.0, '#05070b');  // ground
+    g.fillStyle = grad; g.fillRect(0, 0, 512, 256);
+    function glow(x, y, r, col) {
+      var rg = g.createRadialGradient(x, y, 0, x, y, r);
+      rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    glow(96, 70, 120, 'rgba(255,238,210,0.95)');   // sun (warm key)
+    glow(360, 96, 150, 'rgba(90,140,230,0.30)');   // earthshine (cool fill)
+    var tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    var pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(tex).texture;
+    tex.dispose(); pmrem.dispose();
+  })();
+
   /* lights */
   var sun = new THREE.DirectionalLight(0xfff3e2, 3.6);
   sun.position.set(14, 15, 13);
