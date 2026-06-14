@@ -1,13 +1,8 @@
 /* XVI Robotics — lunar base scene: a realistic WebGL rendering of a humanoid
    robot walking on the moon past a SpaceX-style base. Self-hosted Three.js,
    no external requests. */
-import * as THREE from 'three';
+import * as THREE from './vendor/three.module.min.js';
 import { createH2Robot, GAIT } from './h2-robot.js';
-import { EffectComposer } from './vendor/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from './vendor/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from './vendor/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from './vendor/jsm/postprocessing/ShaderPass.js';
-import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
 
 var TAU = Math.PI * 2;
 
@@ -16,8 +11,9 @@ function hash2(i, j) {
   var n = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
   return n - Math.floor(n);
 }
-function sstep(a, b, x) { x = Math.max(0, Math.min(1, (x - a) / (b - a))); return x * x * (3 - 2 * x); }
-var INTRO = 3.6; // seconds of on-rails establishing camera move
+
+// treadmill speed locked to the H2 walk stride (m/s)
+var SPEED = GAIT.stepLen / (GAIT.STANCE * GAIT.CYC);
 
 /* ---------- procedural textures ---------- */
 function glowTexture(inner, outer) {
@@ -90,88 +86,83 @@ function earthTexture() {
   return tex;
 }
 
-// tileable regolith normal map from wrapped value-noise fbm
-function makeRegolithNormal(size) {
-  function vnoise(x, y, cells) {
-    var fx = x / size * cells, fy = y / size * cells;
-    var x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
-    var sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
-    function v(i, j) { return hash2(((i % cells) + cells) % cells, ((j % cells) + cells) % cells); }
-    var a = v(x0, y0), b = v(x0 + 1, y0), c = v(x0, y0 + 1), d = v(x0 + 1, y0 + 1);
-    return (a * (1 - sx) + b * sx) * (1 - sy) + (c * (1 - sx) + d * sx) * sy;
-  }
-  function H(x, y) { return 0.55 * vnoise(x, y, 8) + 0.3 * vnoise(x, y, 18) + 0.15 * vnoise(x, y, 40); }
-  var cv = document.createElement('canvas'); cv.width = cv.height = size;
-  var g = cv.getContext('2d'), img = g.createImageData(size, size), d = img.data, st = 1.6;
-  for (var y = 0; y < size; y++) {
-    for (var x = 0; x < size; x++) {
-      var nx = (H(x - 1, y) - H(x + 1, y)) * st, ny = (H(x, y - 1) - H(x, y + 1)) * st, nz = 1;
-      var inv = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz), p = (y * size + x) * 4;
-      d[p] = (nx * inv * 0.5 + 0.5) * 255; d[p + 1] = (ny * inv * 0.5 + 0.5) * 255;
-      d[p + 2] = (nz * inv * 0.5 + 0.5) * 255; d[p + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  var t = new THREE.CanvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-
-/* ---------- terrain: gentle crater field, fully periodic in BOTH axes so a
-   3x3 grid of identical tiles can stream around a free-roaming walker ---------- */
-var CELL = 11, NXC = 22, PER = NXC * CELL; // square period (~242m)
+/* ---------- terrain: periodic crater field, flat corridor for the walker ---------- */
+var TILE = 240, TILE_W = 200;
+var CELL = 11, NXC = Math.round(TILE / CELL);
 var craterCells = null;
 function buildCraterCells() {
-  craterCells = [];                       // NXC x NXC torus of craters
+  // precomputed once: ~22x24 cells instead of 4 hashes per cell per vertex
+  craterCells = [];
+  var JM = Math.ceil(TILE_W / 2 / CELL) + 2;
   for (var iw = 0; iw < NXC; iw++) {
-    var row = craterCells[iw] = [];
-    for (var jw = 0; jw < NXC; jw++) {
-      row[jw] = hash2(iw * 3 + 1, jw * 5 + 2) < 0.5 ? null : {
-        fx: 0.2 + 0.6 * hash2(iw + 7, jw + 3),
-        fz: 0.2 + 0.6 * hash2(iw + 1, jw + 9),
-        rad: 1.4 + 3.0 * hash2(iw + 4, jw + 6)
+    var row = craterCells[iw] = {};
+    for (var j = -JM; j <= JM; j++) {
+      if (hash2(iw, j) < 0.45) { row[j] = null; continue; }
+      row[j] = {
+        fx: 0.2 + 0.6 * hash2(iw + 7, j + 3),
+        fz: 0.2 + 0.6 * hash2(iw + 1, j + 9),
+        rad: 1.4 + 3.4 * hash2(iw + 4, j + 6)
       };
     }
   }
 }
-function wrapc(i) { return ((i % NXC) + NXC) % NXC; }
 function terrainH(x, z) {
+  // periodic in x with period TILE so leapfrogging tiles join seamlessly
   if (!craterCells) buildCraterCells();
-  // integer harmonics of the period -> seamless across tile seams in x AND z
-  var h = 0.34 * Math.sin(x / PER * TAU) + 0.28 * Math.sin(z / PER * TAU + 0.7)
-        + 0.18 * Math.sin((x + z) / PER * TAU * 2 + 2.2)
-        + 0.12 * Math.sin((x - z) / PER * TAU * 3 + 1.1);
+  var h = 0.16 * Math.sin((x * 2.1 + 1.7) / TILE * TAU) + 0.13 * Math.sin(z * 0.055 + 0.4) + 0.1 * Math.sin((x * 3.0 + z * 0.9) / TILE * TAU + 2.2);
   var ci = Math.floor(x / CELL), cj = Math.floor(z / CELL);
   for (var i = ci - 1; i <= ci + 1; i++) {
-    var rowi = craterCells[wrapc(i)];
+    var iw = ((i % NXC) + NXC) % NXC; // wrap cell hash in x
+    var row = craterCells[iw];
     for (var j = cj - 1; j <= cj + 1; j++) {
-      var cc = rowi[wrapc(j)];
+      var cc = row[j];
       if (!cc) continue;
-      var dx = x - (i + cc.fx) * CELL, dz = z - (j + cc.fz) * CELL;
-      var rad = cc.rad, d2 = dx * dx + dz * dz, reach = rad * 1.5;
+      var cx = (i + cc.fx) * CELL;
+      var cz = (j + cc.fz) * CELL;
+      var rad = cc.rad;
+      var dx = x - cx, dz = z - cz;
+      var d2 = dx * dx + dz * dz;
+      var reach = rad * 1.5;
       if (d2 > reach * reach) continue;
-      var d = Math.sqrt(d2), depth = rad * 0.16;
-      if (d < rad) { var q = 1 - (d / rad) * (d / rad); h -= depth * q * Math.sqrt(q); }
+      var d = Math.sqrt(d2);
+      var depth = rad * 0.2;
+      if (d < rad) {
+        var q = 1 - (d / rad) * (d / rad);
+        h -= depth * q * Math.sqrt(q);
+      }
       var rim = (d - rad) / (rad * 0.22);
-      h += depth * 0.5 * Math.exp(-rim * rim);
+      h += depth * 0.55 * Math.exp(-rim * rim);
     }
+  }
+  var lat = Math.abs(z);
+  if (lat < 6) {
+    var k = lat < 2.2 ? 0 : (lat - 2.2) / 3.8;
+    k = k * k * (3 - 2 * k);
+    h *= 0.1 + 0.9 * k;
   }
   return h;
 }
 
-function buildTerrainGeometry(seg) {
-  var geo = new THREE.PlaneGeometry(PER, PER, seg, seg);
+// terrain height under a world-group x position (tiles repeat every TILE)
+function groundY(wx, z) {
+  return terrainH(((wx + TILE / 2) % TILE + TILE) % TILE, z);
+}
+
+function buildTerrainGeometry(SEG_X, SEG_Z) {
+  var geo = new THREE.PlaneGeometry(TILE, TILE_W, SEG_X, SEG_Z);
   geo.rotateX(-Math.PI / 2);
   var pos = geo.attributes.position;
   var colors = new Float32Array(pos.count * 3);
   for (var i = 0; i < pos.count; i++) {
     var x = pos.getX(i), z = pos.getZ(i);
-    var h = terrainH(x, z);               // periodic: tile edges match neighbours
+    var h = terrainH(x + TILE / 2, z); // sample in [0, TILE)
     pos.setY(i, h);
     var sp = hash2(Math.round(x * 7.3), Math.round(z * 7.7));
-    var b = 0.9 + h * 0.22 + (sp - 0.5) * 0.18;
+    var b = 0.86 + h * 0.5 + (sp - 0.5) * 0.18;
     b = Math.max(0.55, Math.min(1.35, b));
-    colors[i * 3] = b; colors[i * 3 + 1] = b; colors[i * 3 + 2] = b * 1.02;
+    colors[i * 3] = b;
+    colors[i * 3 + 1] = b;
+    colors[i * 3 + 2] = b * 1.02;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
@@ -186,7 +177,7 @@ window.XVIMoonBase = function (canvas) {
   var DPR = window.devicePixelRatio || 1;
   var MAXPR = COARSE ? 1.5 : 2; // dpr-3 phones don't need a 2x buffer
 
-  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: 'high-performance' });
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: DPR <= 1.5, powerPreference: 'high-performance' });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -198,60 +189,6 @@ window.XVIMoonBase = function (canvas) {
   scene.fog = new THREE.FogExp2(0x05070a, 0.009);
 
   var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 900);
-
-  /* ---------- post-processing: bloom + filmic grade + ACES output ---------- */
-  var rtSamples = COARSE ? 0 : 4; // MSAA on desktop; rely on bloom softening on mobile
-  var composer = new EffectComposer(renderer,
-    new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: rtSamples }));
-  composer.addPass(new RenderPass(scene, camera));
-  // bloom in linear HDR — high threshold so only true emissives/glare bloom,
-  // not merely sun-lit white surfaces
-  var bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), COARSE ? 0.5 : 0.7, 0.5, 1.5);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass()); // ACES tone map + sRGB
-  // filmic grade runs LAST, in display-referred sRGB, so the 0.5 contrast pivot
-  // and vignette/grain behave correctly (no shadow crush)
-  var gradePass = new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, uTime: { value: 0 } },
-    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader:
-      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform float uTime;' +
-      'void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb;' +
-      ' float l = dot(c, vec3(0.2126,0.7152,0.0722));' +
-      ' c = mix(vec3(l), c, 1.1);' +                                   // saturation
-      ' c = (c - 0.5) * 1.05 + 0.5;' +                                 // contrast (display space)
-      ' c += vec3(-0.01,0.004,0.02) * (1.0 - smoothstep(0.0,0.4,l));' + // teal shadow lift
-      ' vec2 q = vUv - 0.5; c *= clamp(1.0 - dot(q,q) * 0.85, 0.0, 1.0);' + // vignette
-      ' float g = fract(sin(dot(vUv, vec2(12.9898,78.233)) + uTime) * 43758.5453);' +
-      ' c += (g - 0.5) * 0.012;' +                                     // grain
-      ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'
-  });
-  composer.addPass(gradePass);
-
-  /* ---------- image-based lighting: procedural space env for reflections ---------- */
-  (function setupEnv() {
-    var c = document.createElement('canvas');
-    c.width = 512; c.height = 256;
-    var g = c.getContext('2d');
-    var grad = g.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0.0, '#01020a');  // zenith
-    grad.addColorStop(0.46, '#0b1322'); // sky toward horizon
-    grad.addColorStop(0.52, '#14181f'); // horizon haze
-    grad.addColorStop(1.0, '#05070b');  // ground
-    g.fillStyle = grad; g.fillRect(0, 0, 512, 256);
-    function glow(x, y, r, col) {
-      var rg = g.createRadialGradient(x, y, 0, x, y, r);
-      rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    glow(96, 70, 120, 'rgba(255,238,210,0.95)');   // sun (warm key)
-    glow(360, 96, 150, 'rgba(90,140,230,0.30)');   // earthshine (cool fill)
-    var tex = new THREE.CanvasTexture(c);
-    tex.mapping = THREE.EquirectangularReflectionMapping;
-    var pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromEquirectangular(tex).texture;
-    tex.dispose(); pmrem.dispose();
-  })();
 
   /* lights */
   var sun = new THREE.DirectionalLight(0xfff3e2, 3.6);
@@ -270,9 +207,7 @@ window.XVIMoonBase = function (canvas) {
   scene.add(earthshine);
   scene.add(new THREE.AmbientLight(0x131a26, 0.6));
 
-  /* sky: stars + earth in a group that tracks the camera (kept at infinity) */
-  var sky = new THREE.Group();
-  scene.add(sky);
+  /* sky: stars + earth (fixed to scene, not the scrolling world) */
   var starGeo = new THREE.BufferGeometry();
   var starN = 1700, starPos = new Float32Array(starN * 3), starCol = new Float32Array(starN * 3);
   for (var i = 0; i < starN; i++) {
@@ -291,71 +226,29 @@ window.XVIMoonBase = function (canvas) {
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
   starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3));
   var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
-  sky.add(stars);
+  scene.add(stars);
 
-  // Earth: a lit planet (sun gives a real day/night terminator) with a glowing
-  // atmosphere rim — the hero celestial element
-  var EARTH_R = 4.2, earthPos = new THREE.Vector3(30, 15, 33);
-  var earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R, 64, 40),
-    new THREE.MeshStandardMaterial({ map: earthTexture(), roughness: 1, metalness: 0, emissive: 0x0a1a33, emissiveIntensity: 0.35, fog: false }));
-  earth.position.copy(earthPos);
-  sky.add(earth);
-  // atmosphere: additive Fresnel limb glow on a slightly larger back-face shell
-  var atmo = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.07, 48, 32),
-    new THREE.ShaderMaterial({
-      transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: { uColor: { value: new THREE.Color(0x5aa0ff) } },
-      vertexShader: 'varying vec3 vN; varying vec3 vView; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vView = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
-      fragmentShader: 'varying vec3 vN; varying vec3 vView; uniform vec3 uColor; void main(){ float f = pow(1.0 - max(dot(vN, vView), 0.0), 2.6); gl_FragColor = vec4(uColor * f * 1.6, f); }'
-    }));
-  atmo.position.copy(earthPos);
-  sky.add(atmo);
-  var earthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(120,170,255,0.45)', 'rgba(70,120,220,0.12)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-  earthGlow.position.copy(earthPos);
-  earthGlow.scale.setScalar(10);
-  sky.add(earthGlow);
-  // a small, contained sun (blooms via post) at the sun's direction
-  var sunDir = new THREE.Vector3(14, 15, 13).normalize();
-  var sunGlare = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,246,228,0.85)', 'rgba(255,205,150,0.16)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-  sunGlare.position.copy(sunDir).multiplyScalar(360);
-  sunGlare.scale.setScalar(20);
-  sky.add(sunGlare);
+  var earth = new THREE.Mesh(new THREE.SphereGeometry(2.6, 48, 32), new THREE.MeshBasicMaterial({ map: earthTexture(), fog: false }));
+  earth.position.set(-30, 10, -92); // earthrise behind the base
+  scene.add(earth);
+  var earthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(120,170,255,0.5)', 'rgba(70,120,220,0.16)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  earthGlow.position.copy(earth.position);
+  earthGlow.scale.setScalar(8);
+  scene.add(earthGlow);
 
   /* scrolling world */
   var world = new THREE.Group();
   scene.add(world);
 
-  var SEG = COARSE ? 60 : 96, GSTEP = PER / SEG;
-  var terrainGeo = buildTerrainGeometry(SEG);
-  // height of the RENDERED (tessellated) surface, bilinearly between grid verts,
-  // so feet and rocks sit on what's drawn — not on sharper analytic crater dips
-  function sampledH(x, z) {
-    var gx = Math.floor(x / GSTEP) * GSTEP, gz = Math.floor(z / GSTEP) * GSTEP;
-    var fx = (x - gx) / GSTEP, fz = (z - gz) / GSTEP;
-    return terrainH(gx, gz) * (1 - fx) * (1 - fz) + terrainH(gx + GSTEP, gz) * fx * (1 - fz)
-         + terrainH(gx, gz + GSTEP) * (1 - fx) * fz + terrainH(gx + GSTEP, gz + GSTEP) * fx * fz;
-  }
-  var regoNormal = makeRegolithNormal(256);
-  regoNormal.repeat.set(90, 90); // fine regolith relief tiled across the terrain
-  var terrainMat = new THREE.MeshStandardMaterial({
-    color: 0x595b60, roughness: 1, metalness: 0, vertexColors: true,
-    normalMap: regoNormal, normalScale: new THREE.Vector2(0.85, 0.85)
-  });
+  var terrainGeo = buildTerrainGeometry(COARSE ? 150 : 220, COARSE ? 110 : 160);
+  var terrainMat = new THREE.MeshStandardMaterial({ color: 0x595b60, roughness: 1, metalness: 0, vertexColors: true });
   var tiles = [];
-  for (var ti = -1; ti <= 1; ti++) {
-    for (var tj = -1; tj <= 1; tj++) {
-      var tile = new THREE.Mesh(terrainGeo, terrainMat);
-      tile.receiveShadow = true;
-      tile.position.set(ti * PER, 0, tj * PER);
-      world.add(tile);
-      tiles.push(tile);
-    }
-  }
-  // keep the 3x3 tile grid centred on the world point under the walker
-  function snapTiles(cx, cz) {
-    var sx = Math.round(cx / PER) * PER, sz = Math.round(cz / PER) * PER, k = 0;
-    for (var a = -1; a <= 1; a++)
-      for (var b = -1; b <= 1; b++) tiles[k++].position.set(sx + a * PER, 0, sz + b * PER);
+  for (i = 0; i < 3; i++) {
+    var tile = new THREE.Mesh(terrainGeo, terrainMat);
+    tile.receiveShadow = true;
+    tile.position.x = i * TILE;
+    world.add(tile);
+    tiles.push(tile);
   }
 
   /* ---------- materials for hardware ---------- */
@@ -400,7 +293,7 @@ window.XVIMoonBase = function (canvas) {
 
   /* ---------- the base (SpaceX-style render: domes + modules + ships) ---------- */
   var base = new THREE.Group();
-  base.position.set(21, terrainH(21, 12), 12); // landmark ahead under the Earthrise, seated on terrain
+  base.position.set(-14, 0, -56);
   world.add(base);
 
   // landing pad
@@ -568,24 +461,19 @@ window.XVIMoonBase = function (canvas) {
     rp.setXYZ(i, rp.getX(i) * rr, rp.getY(i) * rr * 0.7, rp.getZ(i) * rr);
   }
   rockGeo.computeVertexNormals();
-  // rocks scattered across one period; each wraps to the cell nearest the walker
   var rocks = [];
-  for (i = 0; i < 18; i++) {
+  for (i = 0; i < 12; i++) {
     var rock = new THREE.Mesh(rockGeo, terrainMat);
-    var rs = 0.12 + hash2(i, 11) * 0.6;
+    var rs = 0.12 + hash2(i, 11) * 0.55;
     rock.scale.setScalar(rs);
-    var ox = (hash2(i, 19) - 0.5) * PER, oz = (hash2(i, 13) - 0.5) * PER;
+    var rz = (hash2(i, 13) - 0.5) * 40;
+    if (Math.abs(rz) < 2.5) rz = 2.5 + hash2(i, 17) * 4;
+    var rx2 = hash2(i, 19) * 110 - 20;
+    // seat on the terrain; the +TILE wrap keeps the same ground height
+    rock.position.set(rx2, groundY(rx2, rz) + rs * 0.25, rz);
     rock.receiveShadow = true;
     world.add(rock);
-    rocks.push({ mesh: rock, ox: ox, oz: oz, y: sampledH(ox, oz) + rs * 0.25 });
-  }
-  function wrapRocks(cx, cz) {
-    for (var r = 0; r < rocks.length; r++) {
-      var rk = rocks[r];
-      rk.mesh.position.set(
-        Math.round((cx - rk.ox) / PER) * PER + rk.ox, rk.y,
-        Math.round((cz - rk.oz) / PER) * PER + rk.oz);
-    }
+    rocks.push(rock);
   }
 
   /* footfall dust: small pool of sprites, parented to the world */
@@ -598,37 +486,32 @@ window.XVIMoonBase = function (canvas) {
     dustPool.push({ sp: dsp, age: 99, life: 1, vy: 0, vx: 0 });
   }
   var dustIdx = 0;
-  // spawn at the walker's world-local footfall so the puff stays on the ground
-  function puff(wx, wy, wz) {
+  function puff(footX, footZ) {
     for (var pi = 0; pi < 3; pi++) {
       var d = dustPool[dustIdx];
       dustIdx = (dustIdx + 1) % dustPool.length;
       d.age = 0;
       d.life = 0.9 + Math.random() * 0.6;
-      d.vy = 0.22 + Math.random() * 0.28;
-      d.sp.position.set(wx + (Math.random() - 0.5) * 0.12, wy + 0.05, wz + (Math.random() - 0.5) * 0.12);
+      d.vy = 0.25 + Math.random() * 0.3;
+      d.vx = -0.3 - Math.random() * 0.4;
+      d.sp.position.set(footX + scroll + (Math.random() - 0.5) * 0.12, 0.05, footZ + (Math.random() - 0.5) * 0.12);
       d.sp.scale.setScalar(0.12 + Math.random() * 0.1);
       d.sp.visible = true;
     }
   }
 
   /* ---------- camera control ---------- */
-  // yaw/pitch are a drag-orbit OFFSET on top of the auto chase angle
-  var yaw = 0, pitch = 0.12, yawV = 0, dist = 5.7, lookY = 1.02, lookX = 0;
-  var camHeading = 0, CAMSIDE = 0.5, camInit = false;
+  var yaw = 0.42, pitch = 0.085, yawV = 0, dist = 5.7, lookY = 1.02, lookX = -0.9;
   var dragging = false, lx = 0, ly = 0, fired = false, activeId = null, lastMoveT = 0;
   var W = 0, H = 0;
 
   function applyQuality() {
-    var pr = quality === 2 ? Math.min(DPR, MAXPR) : quality === 1 ? Math.min(DPR, 1.25) : 1;
-    renderer.setPixelRatio(pr);
-    composer.setPixelRatio(pr);
+    renderer.setPixelRatio(quality === 2 ? Math.min(DPR, MAXPR) : quality === 1 ? Math.min(DPR, 1.25) : 1);
   }
 
   function resize() {
     W = window.innerWidth; H = window.innerHeight;
     renderer.setSize(W, H, false);
-    composer.setSize(W, H);
     applyQuality(); // respect the adaptive ladder, don't silently restore full res
     camera.aspect = W / H;
     // landscape phones use the desktop-style centered framing (matches the CSS)
@@ -641,48 +524,23 @@ window.XVIMoonBase = function (canvas) {
     kick();
   }
 
-  /* ---------- free-roam controller ---------- */
-  // The robot stays at the scene origin facing +X; the WORLD group is moved and
-  // rotated under it from the robot's virtual world pose, so the camera, sky and
-  // shadow frustum never have to chase anything.
-  var px = 0, pz = 0, heading = 0;   // robot's virtual world pose
-  var spd = 0, trn = 0;              // eased speed (m/s) and turn rate (rad/s)
-  var inFwd = 0, inTurn = 0, inActive = false;
-  // seed gaitT to a double-support phase so the idle stance reads as a clean
-  // stand; robotGY seeded to ground height (no startup pop / foot burial)
-  var gaitT = 0.05 * GAIT.CYC, robotGY = sampledH(0, 0);
-  var CRUISE = 0.5, MAXSPD = 1.7, MAXTRN = 1.0;
-  var jumpY = 0, jumpV = 0; // low-gravity hop
-  function drive(fwd, turn, active) {
-    inFwd = fwd < -1 ? -1 : (fwd > 1 ? 1 : fwd);
-    inTurn = turn < -1 ? -1 : (turn > 1 ? 1 : turn);
-    inActive = active === undefined ? (Math.abs(inFwd) > 0.04 || Math.abs(inTurn) > 0.04) : !!active;
-    if (!fired) { fired = true; window.dispatchEvent(new CustomEvent('xvi-orbit')); }
-    kick();
-  }
-  function jump() {
-    if (reduce || jumpY > 0.02) return;     // only from the ground
-    jumpV = 3.4;                             // low-g launch
-    for (var k = 0; k < dustPool.length; k++) puff(px + (Math.random() - 0.5) * 0.5, robotGY, pz + (Math.random() - 0.5) * 0.5);
-    kick();
-  }
-
-  var raf = 0, last = performance.now(), t0 = last;
+  /* ---------- animation ---------- */
+  var prevLp = [0, 0.5];
+  var scroll = 0, raf = 0, last = performance.now(), t0 = last;
   var ema = 16, quality = 2, maxQ = 2, drops = 0; // pixel-ratio ladder state
 
-  var prevPh = 0.0, sin = Math.sin, cos = Math.cos, moving = false;
-  function step() { try { window.dispatchEvent(new CustomEvent('xvi-step')); } catch (e) {} }
-  function pose() {
+  var prevPh = 0.0;
+  function pose(t) {
     if (!rig) return;
-    var info = rig.update(gaitT);  // gaitT is frozen when idle -> static stance
-    robot.position.y = robotGY + groundY0 + info.bob + jumpY;
-    if (moving && jumpY < 0.02) {
-      var ph = info.phase, ch = cos(heading), sh = sin(heading);
-      // footfall puffs at the walker's world-local feet (so they stay on the ground)
-      if (ph < prevPh) { puff(px - sh * 0.1, robotGY, pz + ch * 0.1); step(); }          // left heel strike
-      if (prevPh < 0.5 && ph >= 0.5) { puff(px + sh * 0.1, robotGY, pz - ch * 0.1); step(); } // right heel strike
+    // reduced motion: freeze at a double-support phase (both feet planted, mid-stride)
+    var info = rig.update(reduce ? 0.05 * GAIT.CYC : t);
+    robot.position.y = groundY0 + info.bob;
+    if (!reduce) {
+      var ph = info.phase;
+      if (ph < prevPh) puff(0.05, -0.1);                 // left heel strike (phase wrap)
+      if (prevPh < 0.5 && ph >= 0.5) puff(0.05, 0.1);    // right heel strike
+      prevPh = ph;
     }
-    prevPh = info.phase;
   }
 
   var beaconPhase = 0;
@@ -704,64 +562,35 @@ window.XVIMoonBase = function (canvas) {
       quality++;
       applyQuality();
     }
-    bloom.enabled = quality > 0; // shed the bloom blur passes on the lowest tier
 
     if (!dragging && !reduce) {
       yaw += yawV * dt;
       yawV *= Math.pow(0.12, dt);
     }
+    if (!reduce) scroll += SPEED * dt;
 
-    // integrate the controller: ease toward the joystick target, advance the
-    // virtual world pose, drive the gait by distance so the foot stays locked.
-    // Reduced motion only disables the idle auto-cruise — the user can still
-    // drive, and the robot still renders (it just doesn't move on its own).
-    // intro: the robot holds an establishing beat, then eases into a gentle
-    // idle ARC (a slow circle) that keeps the base + Earthrise composed in view
-    // instead of cruising straight off into empty terrain
-    var cruiseRamp = Math.max(0, Math.min(1, (t - 1.6) / 1.8));
-    var tgtSpd = inActive ? inFwd * MAXSPD : (reduce ? 0 : CRUISE * cruiseRamp);
-    var tgtTrn = inActive ? inTurn * MAXTRN : (reduce ? 0 : 0.12 * cruiseRamp);
-    spd += (tgtSpd - spd) * Math.min(1, dt * 4);
-    trn += (tgtTrn - trn) * Math.min(1, dt * 6);
-    heading += trn * dt;
-    px += cos(heading) * spd * dt;
-    pz += sin(heading) * spd * dt;
-    // step cadence from forward speed AND turning, so the robot keeps stepping
-    // (not rigidly pivoting) through and on the spot during turns. tsgn ramps
-    // 1 -> -1 across spd in [0,-0.2] (continuous through 0): a standing turn
-    // steps forward, only a real reverse steps backward
-    var tsgn = spd > 0 ? 1 : Math.max(-1, 1 + spd / 0.1);
-    var loco = spd + tsgn * Math.abs(trn) * 0.42;
-    gaitT += loco * dt * (GAIT.STANCE * GAIT.CYC / GAIT.stepLen);
-    robotGY += (sampledH(px, pz) - robotGY) * Math.min(1, dt * 6);
-    // low-gravity hop arc + landing dust
-    if (jumpV !== 0 || jumpY > 0) {
-      jumpV -= 4.0 * dt;
-      jumpY += jumpV * dt;
-      if (jumpY <= 0) {
-        jumpY = 0; jumpV = 0;
-        for (var jk = 0; jk < dustPool.length; jk++) puff(px + (Math.random() - 0.5) * 0.6, robotGY, pz + (Math.random() - 0.5) * 0.6);
-      }
+    world.position.x = -scroll;
+
+    // wrap terrain tiles and props as they fall behind (all wrap distances are
+    // multiples of TILE so everything re-seats on identical ground)
+    for (var i = 0; i < 3; i++) {
+      if (tiles[i].position.x - scroll < -TILE) tiles[i].position.x += TILE * 3;
     }
-    moving = inActive || jumpY > 0 || Math.abs(spd) > 0.02 || Math.abs(trn) > 0.02;
+    if (base.position.x - scroll < -150) base.position.x += TILE * 2;
+    for (i = 0; i < rocks.length; i++) {
+      if (rocks[i].position.x - scroll < -30) rocks[i].position.x += TILE;
+    }
 
-    // robot moves through a fixed world; terrain + props stream around it
-    robot.position.x = px;
-    robot.position.z = pz;
-    robot.rotation.y = -heading;          // local +X faces the heading
-    if (rig) rig.setBank(-trn * 0.16);    // bank into the turn
-    snapTiles(px, pz);
-    wrapRocks(px, pz);
+    pose(t);
 
-    pose();
-
-    // dust (rises and fades in world-local; stays on the ground as the robot moves on)
-    for (var i = 0; i < dustPool.length; i++) {
+    // dust
+    for (i = 0; i < dustPool.length; i++) {
       var d = dustPool[i];
       if (d.age > d.life) { d.sp.visible = false; continue; }
       d.age += dt;
       var u = d.age / d.life;
       d.sp.position.y += d.vy * dt;
+      d.sp.position.x += d.vx * dt;
       d.sp.scale.setScalar(d.sp.scale.x + dt * 0.55);
       d.sp.material.opacity = 0.4 * (1 - u);
     }
@@ -777,56 +606,26 @@ window.XVIMoonBase = function (canvas) {
 
     earth.rotation.y = t * 0.008;
 
-    // third-person chase camera: smoothly trails behind the robot's heading
-    // (eases around on turns), with drag (yaw/pitch) as an orbit offset
-    var dh = heading - camHeading;
-    while (dh > Math.PI) dh -= TAU; while (dh < -Math.PI) dh += TAU;
-    camHeading += dh * Math.min(1, dt * 2.6);
-    var tx = robot.position.x, ty = robotGY + lookY, tz = robot.position.z;
-    var thc = camHeading + Math.PI + CAMSIDE + yaw; // behind + 3/4 offset + drag
-    // on-rails intro: ease from a wide, low, side angle into the chase pose
-    var ie = t < INTRO ? 1 - sstep(0, INTRO, t) : 0;
-    var idist = dist + ie * 5.2, ipitch = pitch - ie * 0.055, ithc = thc + ie * 1.35;
-    var cp = Math.cos(ipitch), spv = Math.sin(ipitch);
-    // same trig basis as the robot's heading (cos->x, sin->z) so the camera
-    // truly trails BEHIND the heading at every angle (not a mirrored one)
-    var cpx = tx + Math.cos(ithc) * idist * cp;
-    var cpy = ty + 0.62 + spv * idist;
-    var cpz = tz + Math.sin(ithc) * idist * cp;
-    var kf = camInit ? Math.min(1, dt * 7) : 1; // snap on the first frame
-    camInit = true;
+    // camera: orbit with gentle idle sway
+    var yawR = yaw + (reduce ? 0 : 0.1 * Math.sin(t * 0.07));
+    var cp = Math.cos(pitch), spv = Math.sin(pitch);
     camera.position.set(
-      camera.position.x + (cpx - camera.position.x) * kf,
-      camera.position.y + (cpy - camera.position.y) * kf,
-      camera.position.z + (cpz - camera.position.z) * kf
+      lookX + Math.sin(yawR) * dist * cp,
+      lookY + 0.62 + spv * dist,
+      Math.cos(yawR) * dist * cp
     );
-    // compose the robot off-centre on desktop (hero text sits on the left) by
-    // aiming slightly to its side along the camera-right axis
-    camera.lookAt(tx + Math.sin(thc) * lookX, ty, tz - Math.cos(thc) * lookX);
+    camera.lookAt(lookX, lookY, 0);
 
-    // sky and shadow follow so stars/Earth stay at infinity and the shadow
-    // frustum (fixed around its target) tracks the roaming robot
-    sky.position.copy(camera.position);
-    sun.position.set(tx + 14, robotGY + 15, tz + 13);
-    sun.target.position.set(tx, robotGY, tz);
+    renderer.render(scene, camera);
 
-    gradePass.uniforms.uTime.value = t;
-    composer.render();
-
-    // Keep animating while moving/dragging (or always, when motion is allowed).
-    // When idle under reduced motion, keep rendering for a short "settle" window
-    // after the last kick so the robot/terrain reliably paint (mobile WebGL can
-    // miss a single first frame) before the loop parks to save battery.
-    if (!reduce || dragging || moving || now < settleUntil) {
+    if (!reduce || dragging) {
       raf = requestAnimationFrame(frame);
     } else {
       raf = 0;
     }
   }
 
-  var settleUntil = 0;
   function kick() {
-    settleUntil = performance.now() + 1800; // render burst so a fresh frame paints
     if (!raf) {
       last = performance.now();
       raf = requestAnimationFrame(frame);
@@ -878,16 +677,7 @@ window.XVIMoonBase = function (canvas) {
   resize();
   kick();
 
-  // locomotion control surface for the on-screen joystick + keyboard (index.html)
-  window.XVIControl = { drive: drive, jump: jump };
-  // headless test hook: ?drive=<fwd>,<turn> applies a constant input
-  try {
-    var qd = (location.search.match(/[?&]drive=([^&]+)/) || [])[1];
-    if (qd) { var p = decodeURIComponent(qd).split(','); drive(parseFloat(p[0]) || 0, parseFloat(p[1]) || 0, true); }
-  } catch (e) {}
-
   return function () {
-    window.XVIControl = null;
     cancelAnimationFrame(raf);
     canvas.removeEventListener('pointerdown', down);
     canvas.removeEventListener('webglcontextrestored', onRestore);
@@ -895,7 +685,6 @@ window.XVIMoonBase = function (canvas) {
     window.removeEventListener('pointerup', up);
     window.removeEventListener('pointercancel', up);
     window.removeEventListener('resize', resize);
-    composer.dispose();
     renderer.dispose();
   };
 };

@@ -5,39 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XVI Robotics | Humanoid Foundation Model</title>
     <meta name="description" content="XVI Robotics builds foundation models for humanoid robots — bridging intelligence and embodiment to unlock the next era of human civilization.">
-    <meta name="theme-color" content="#04070b">
-    <link rel="canonical" href="https://xvirobotics.com/">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="XVI Robotics">
-    <meta property="og:url" content="https://xvirobotics.com/">
-    <meta property="og:title" content="XVI Robotics | Humanoid Foundation Model">
-    <meta property="og:description" content="Advancing the robot revolution toward a Type II civilization. Foundation models for humanoid robots — drive one across the moon.">
-    <meta property="og:image" content="https://xvirobotics.com/assets/og-card.jpg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="XVI Robotics | Humanoid Foundation Model">
-    <meta name="twitter:description" content="Advancing the robot revolution toward a Type II civilization. Drive a humanoid across the moon.">
-    <meta name="twitter:image" content="https://xvirobotics.com/assets/og-card.jpg">
-    <script type="application/ld+json">
-    {"@context":"https://schema.org","@type":"Organization","name":"XVI Robotics","alternateName":"十六号机器人","url":"https://xvirobotics.com/","logo":"https://xvirobotics.com/assets/logo-color.png","description":"XVI Robotics builds foundation models for humanoid robots — bridging intelligence and embodiment to unlock the next era of human civilization.","email":"floodsung@xvirobotics.com","foundingDate":"2025"}
-    </script>
-    <link rel="preload" href="vendor/fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="modulepreload" href="vendor/three.module.min.js">
     <link rel="modulepreload" href="vendor/three.core.min.js">
-    <link rel="preload" href="vendor/h2.glb" as="fetch">
-    <link rel="preload" href="vendor/h2-kinematics.json" as="fetch">
+    <link rel="preload" href="vendor/h2.glb" as="fetch" crossorigin>
     <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
     </script>
     <link rel="icon" href="logo-new-mark.jpg">
     <style>
-        /* self-hosted fonts (no external requests; latin subset + zh subset) */
-        @font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 300 500; font-display: swap; src: url(vendor/fonts/space-grotesk.woff2) format('woff2'); }
-        @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url(vendor/fonts/ibm-plex-mono-400.woff2) format('woff2'); }
-        @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url(vendor/fonts/ibm-plex-mono-500.woff2) format('woff2'); }
-        @font-face { font-family: 'Noto Sans SC'; font-style: normal; font-weight: 300 500; font-display: swap; src: url(vendor/fonts/noto-sans-sc-sub.woff2) format('woff2'); }
-
         html, body {
             margin: 0;
             padding: 0;
@@ -286,185 +264,6 @@
             opacity: 0;
         }
 
-        .joystick {
-            position: absolute;
-            z-index: 5;
-            right: 28px;
-            bottom: 108px;
-            width: 116px;
-            height: 116px;
-            border-radius: 50%;
-            border: 1px solid rgba(126, 224, 255, 0.32);
-            background: radial-gradient(circle at 50% 50%, rgba(126, 224, 255, 0.06), rgba(4, 7, 11, 0.28));
-            box-shadow: 0 0 24px rgba(126, 224, 255, 0.08), inset 0 0 18px rgba(126, 224, 255, 0.05);
-            touch-action: none;
-            cursor: grab;
-            opacity: 0.5;
-            transition: opacity 0.3s ease;
-        }
-
-        .joystick:hover, .joystick.active {
-            opacity: 0.92;
-        }
-
-        .joystick.hidden {
-            display: none;
-        }
-
-        .joy-knob {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: 48px;
-            height: 48px;
-            margin: -24px 0 0 -24px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 38% 34%, #cdeeff, #7ee0ff 55%, #2aa6cf);
-            box-shadow: 0 0 16px rgba(126, 224, 255, 0.55);
-            transition: transform 0.12s ease-out;
-            will-change: transform;
-            pointer-events: none;
-        }
-
-        /* show/hide toggle, bottom-right corner just above the footer line */
-        .joy-toggle {
-            position: absolute;
-            z-index: 6;
-            right: 30px;
-            bottom: 60px;
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            border-radius: 50%;
-            border: 1px solid rgba(126, 224, 255, 0.4);
-            background: rgba(4, 7, 11, 0.55);
-            color: #7ee0ff;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.25s ease, color 0.25s ease, border-color 0.25s ease;
-            -webkit-backdrop-filter: blur(4px);
-            backdrop-filter: blur(4px);
-        }
-
-        .joy-toggle:hover, .joy-toggle:focus-visible {
-            opacity: 1;
-            outline: none;
-        }
-
-        .joy-toggle.off {
-            color: rgba(232, 239, 246, 0.55);
-            border-color: rgba(156, 194, 220, 0.32);
-        }
-
-        /* jump button — to the left of the joystick */
-        .jump-btn {
-            position: absolute;
-            z-index: 6;
-            right: 158px;
-            bottom: 96px;
-            width: 54px;
-            height: 54px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            border: 1px solid rgba(126, 224, 255, 0.4);
-            background: radial-gradient(circle at 50% 40%, rgba(126, 224, 255, 0.16), rgba(4, 7, 11, 0.5));
-            color: #bfeeff;
-            cursor: pointer;
-            opacity: 0.62;
-            transition: opacity 0.2s ease, transform 0.08s ease;
-            -webkit-backdrop-filter: blur(4px);
-            backdrop-filter: blur(4px);
-        }
-        .jump-btn:hover { opacity: 0.95; }
-        .jump-btn:active { transform: scale(0.9); }
-
-        /* sound + photo cluster, bottom-left */
-        .ctl-cluster {
-            position: absolute;
-            z-index: 6;
-            left: 30px;
-            bottom: 60px;
-            display: flex;
-            gap: 10px;
-        }
-        .ctl-btn {
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            border: 1px solid rgba(126, 224, 255, 0.32);
-            background: rgba(4, 7, 11, 0.5);
-            color: rgba(190, 238, 255, 0.85);
-            cursor: pointer;
-            opacity: 0.62;
-            transition: opacity 0.2s ease, color 0.2s ease;
-            -webkit-backdrop-filter: blur(4px);
-            backdrop-filter: blur(4px);
-        }
-        .ctl-btn:hover, .ctl-btn:focus-visible { opacity: 1; outline: none; }
-        /* sound icon: show "on" arcs or "off" cross depending on state */
-        #soundBtn .snd-on { display: none; }
-        #soundBtn .snd-off { display: inline; }
-        #soundBtn.on .snd-on { display: inline; }
-        #soundBtn.on .snd-off { display: none; }
-        #soundBtn.on { color: #7ee0ff; }
-
-        /* drive-me prompt, centred low, fades on first input */
-        .drive-hint {
-            position: absolute;
-            z-index: 6;
-            left: 50%;
-            bottom: 118px;
-            transform: translateX(-50%);
-            padding: 8px 16px;
-            border-radius: 999px;
-            border: 1px solid rgba(126, 224, 255, 0.3);
-            background: rgba(4, 7, 11, 0.45);
-            color: rgba(126, 224, 255, 0.92);
-            font-family: 'IBM Plex Mono', 'Noto Sans SC', monospace;
-            font-size: 12px;
-            letter-spacing: 0.12em;
-            white-space: nowrap;
-            -webkit-backdrop-filter: blur(4px);
-            backdrop-filter: blur(4px);
-            animation: hintPulse 2.4s ease-in-out infinite;
-            transition: opacity 0.6s ease;
-        }
-        .drive-hint.gone { opacity: 0; pointer-events: none; }
-        @keyframes hintPulse { 0%, 100% { box-shadow: 0 0 0 rgba(126,224,255,0); } 50% { box-shadow: 0 0 22px rgba(126,224,255,0.22); } }
-
-        /* photo mode: hide all overlays for a clean shareable frame */
-        body.photo .nav, body.photo .hero, body.photo .footer,
-        body.photo .joystick, body.photo .joy-toggle, body.photo .jump-btn,
-        body.photo .ctl-cluster, body.photo .drive-hint { opacity: 0; pointer-events: none; }
-        .photo-exit {
-            position: absolute; z-index: 7; left: 50%; bottom: 30px; transform: translateX(-50%);
-            padding: 7px 15px; border-radius: 999px; border: 1px solid rgba(126,224,255,0.28);
-            background: rgba(4,7,11,0.4); color: rgba(126,224,255,0.85);
-            font-family: 'IBM Plex Mono','Noto Sans SC',monospace; font-size: 11px; letter-spacing: 0.14em;
-            opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
-        }
-        body.photo .photo-exit { opacity: 0.8; }
-
-        @media (max-width: 880px) {
-            .joystick { right: 22px; bottom: 116px; width: 128px; height: 128px; opacity: 0.7; }
-            .joy-knob { width: 54px; height: 54px; margin: -27px 0 0 -27px; }
-            .joy-toggle { right: 24px; bottom: 64px; width: 42px; height: 42px; }
-            .jump-btn { right: 162px; bottom: 96px; width: 58px; height: 58px; }
-            .ctl-cluster { left: 20px; bottom: 56px; }
-            .drive-hint { bottom: 200px; font-size: 11px; }
-        }
-
-        /* reduced motion only disables the auto-cruise (handled in JS); the
-           joystick stays available so users can still drive on demand */
-
         html[lang="zh"] [data-lang-en] {
             display: none;
         }
@@ -619,7 +418,7 @@
         <nav class="nav">
             <img src="assets/logo-white.png" alt="XVI Robotics" class="logo">
             <div class="nav-right">
-                <a class="contact-link" href="mailto:floodsung@xvirobotics.com">
+                <a class="contact-link" data-mailto>
                     <span data-lang-en>Contact</span><span data-lang-cn>联系我们</span>
                 </a>
                 <div class="lang-switch">
@@ -646,9 +445,9 @@
                 <span data-lang-en>We build foundation models for humanoid robots — bridging intelligence and embodiment to unlock the next era of human civilization.</span><span data-lang-cn>我们构建人形机器人基座模型——连接智能与具身，开启人类文明的下一个时代。</span>
             </p>
 
-            <a class="cta" href="mailto:floodsung@xvirobotics.com">
+            <a class="cta" data-mailto>
                 <span class="pulse"></span>
-                <span>floodsung@xvirobotics.com</span>
+                <span id="email-text"></span>
             </a>
         </main>
 
@@ -656,36 +455,9 @@
             <div>© <span id="year">2025</span> XVI ROBOTICS</div>
             <div class="orbit-hint" id="orbit-hint">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 7a5 5 0 1 0 1.5-3.6"></path><path d="M2 1.5V4h2.5" fill="none"></path></svg>
-                <span data-lang-en>WASD / JOYSTICK TO WALK · DRAG TO LOOK</span><span data-lang-cn>WASD / 摇杆控制行走 · 拖动转视角</span>
+                <span data-lang-en>DRAG TO ORBIT</span><span data-lang-cn>拖动旋转视角</span>
             </div>
         </footer>
-
-        <div class="drive-hint" id="driveHint" aria-hidden="true">
-            <span data-lang-en>Drive the robot — joystick or WASD · Space to jump</span><span data-lang-cn>操控机器人 — 摇杆或 WASD · 空格跳跃</span>
-        </div>
-
-        <div class="joystick" id="joystick" aria-hidden="true">
-            <div class="joy-knob" id="joyKnob"></div>
-        </div>
-        <button class="joy-toggle" id="joyToggle" type="button" aria-label="Hide joystick" title="Show / hide joystick">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="7" r="3"></circle><path d="M12 10v7"></path><path d="M7 21h10"></path>
-            </svg>
-        </button>
-        <button class="jump-btn" id="jumpBtn" type="button" aria-label="Jump">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
-        </button>
-        <div class="ctl-cluster">
-            <button class="ctl-btn" id="soundBtn" type="button" aria-label="Toggle sound" aria-pressed="false">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path class="snd-on" d="M16.5 8.5a5 5 0 0 1 0 7"></path><path class="snd-off" d="M22 9l-5 6M17 9l5 6"></path></svg>
-            </button>
-            <button class="ctl-btn" id="photoBtn" type="button" aria-label="Photo mode">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h3l1.5-2h5L16 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"></path><circle cx="12" cy="13" r="3.2"></circle></svg>
-            </button>
-        </div>
-        <div class="photo-exit" id="photoExit" aria-hidden="true">
-            <span data-lang-en>Photo mode · click anywhere to exit</span><span data-lang-cn>拍照模式 · 点击任意处退出</span>
-        </div>
 
     </div>
 
@@ -715,6 +487,15 @@
             }
         })();
 
+        // email assembled at runtime to keep it out of the static markup
+        (function wireEmail() {
+            var email = ["floodsung", "xvirobotics.com"].join("@");
+            document.getElementById("email-text").textContent = email;
+            var links = document.querySelectorAll("[data-mailto]");
+            for (var i = 0; i < links.length; i++) {
+                links[i].setAttribute("href", "mailto:" + email);
+            }
+        })();
 
         document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -754,169 +535,6 @@
                 if (tries++ < 150) setTimeout(poll, 80);
                 else if (!booted) hideHint();
             })();
-        })();
-
-        /* ---------- locomotion: joystick + keyboard drive the H2 ---------- */
-        (function controls() {
-            var joyFwd = 0, joyTurn = 0, joyOn = false;
-            var keys = {};
-            function send() {
-                if (!window.XVIControl) return;
-                if (joyOn) { window.XVIControl.drive(joyFwd, joyTurn, true); return; }
-                var f = (keys.w || keys.ArrowUp ? 1 : 0) - (keys.s || keys.ArrowDown ? 1 : 0);
-                var t = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0);
-                if (f || t) window.XVIControl.drive(f, t, true);
-                else window.XVIControl.drive(0, 0, false);
-            }
-
-            // on-screen joystick
-            var joy = document.getElementById("joystick");
-            var knob = document.getElementById("joyKnob");
-            var R = 38, jid = null;
-            function setKnob(dx, dy) { knob.style.transform = "translate(" + dx + "px," + dy + "px)"; }
-            function jdown(e) {
-                jid = e.pointerId; joyOn = true; joy.classList.add("active");
-                try { joy.setPointerCapture(e.pointerId); } catch (err) {}
-                jmove(e); e.preventDefault();
-            }
-            function jmove(e) {
-                if (!joyOn || e.pointerId !== jid) return;
-                var r = joy.getBoundingClientRect();
-                var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-                var m = Math.hypot(dx, dy);
-                if (m > R) { dx = dx / m * R; dy = dy / m * R; }
-                setKnob(dx, dy);
-                joyFwd = -dy / R;          // up = forward
-                joyTurn = dx / R;          // right = turn right
-                send();
-            }
-            function jup(e) {
-                if (e && e.pointerId !== jid) return;
-                joyOn = false; jid = null; joy.classList.remove("active");
-                setKnob(0, 0); joyFwd = joyTurn = 0; send();
-            }
-            joy.addEventListener("pointerdown", jdown);
-            window.addEventListener("pointermove", jmove);
-            window.addEventListener("pointerup", jup);
-            window.addEventListener("pointercancel", jup);
-
-            // show/hide toggle (persisted) — keyboard still drives when hidden
-            var toggle = document.getElementById("joyToggle");
-            function setJoyVisible(v) {
-                joy.classList.toggle("hidden", !v);
-                toggle.classList.toggle("off", !v);
-                toggle.setAttribute("aria-label", v ? "Hide joystick" : "Show joystick");
-                if (!v) jup();               // release any active drag when hiding
-                try { localStorage.setItem("xvi-joy", v ? "on" : "off"); } catch (e) {}
-            }
-            toggle.addEventListener("click", function () {
-                setJoyVisible(joy.classList.contains("hidden"));
-            });
-            var jpref = null;
-            try { jpref = localStorage.getItem("xvi-joy"); } catch (e) {}
-            setJoyVisible(jpref !== "off");
-
-            // keyboard (WASD / arrows)
-            var watched = { w: 1, a: 1, s: 1, d: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
-            window.addEventListener("keydown", function (e) {
-                var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-                if (!watched[k]) return;
-                keys[k] = true; e.preventDefault(); firstInput(); send();
-            });
-            window.addEventListener("keyup", function (e) {
-                var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-                if (!watched[k]) return;
-                keys[k] = false; send();
-            });
-            // a keyup can be missed on tab-out/focus-loss — clear so the robot doesn't run away
-            function clearKeys() { keys = {}; if (!joyOn) send(); }
-            window.addEventListener("blur", clearKeys);
-            document.addEventListener("visibilitychange", function () { if (document.hidden) clearKeys(); });
-
-            /* ---------- discoverability: drive-me hint + one-time knob demo ---------- */
-            var hint = document.getElementById("driveHint"), hintGone = false;
-            function firstInput() { if (hintGone) return; hintGone = true; hint.classList.add("gone"); }
-            joy.addEventListener("pointerdown", firstInput);
-            setTimeout(function () { if (!hintGone) hint.classList.add("gone"); }, 9000);
-            // gently circle the knob a couple times to advertise the control
-            (function demo() {
-                var t0 = performance.now(), DUR = 2600;
-                function tick(now) {
-                    if (joyOn) return;                 // a real drag owns the knob — don't stomp it
-                    if (hintGone || joy.classList.contains("hidden")) { setKnob(0, 0); return; }
-                    var e = (now - t0) / DUR;
-                    if (e >= 1) { setKnob(0, 0); return; }
-                    var a = e * Math.PI * 4, r = 16 * Math.sin(Math.PI * e);
-                    setKnob(Math.sin(a) * r, -Math.abs(Math.cos(a)) * r * 0.5 - r * 0.5);
-                    requestAnimationFrame(tick);
-                }
-                setTimeout(function () { requestAnimationFrame(tick); }, 1400);
-            })();
-
-            /* ---------- jump ---------- */
-            var jumpBtn = document.getElementById("jumpBtn");
-            function doJump() { firstInput(); if (window.XVIControl && window.XVIControl.jump) window.XVIControl.jump(); }
-            jumpBtn.addEventListener("click", doJump);
-            jumpBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); });
-            window.addEventListener("keydown", function (e) {
-                if (e.code !== "Space" && e.key !== " ") return;
-                if (e.repeat) return;                  // one press = one jump (no key-repeat hopping)
-                var a = document.activeElement;        // don't steal Space from a focused button/link
-                if (a && (a.tagName === "BUTTON" || a.tagName === "A" || a.tagName === "INPUT" || a.isContentEditable)) return;
-                e.preventDefault(); doJump();
-            });
-
-            /* ---------- procedural audio (ambient pad + servo footsteps) ---------- */
-            var soundBtn = document.getElementById("soundBtn");
-            var actx = null, master = null, soundOn = false;
-            function initAudio() {
-                if (actx) return;
-                try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-                master = actx.createGain(); master.gain.value = 0; master.connect(actx.destination);
-                var pad = actx.createGain(); pad.gain.value = 0.16;
-                var filt = actx.createBiquadFilter(); filt.type = "lowpass"; filt.frequency.value = 560;
-                pad.connect(filt); filt.connect(master);
-                [55, 82.41, 110, 164.81].forEach(function (f, i) {
-                    var o = actx.createOscillator(); o.type = i < 2 ? "sawtooth" : "sine";
-                    o.frequency.value = f; o.detune.value = (i - 1.5) * 5;
-                    var g = actx.createGain(); g.gain.value = 0.4 / (i + 1);
-                    o.connect(g); g.connect(pad); o.start();
-                });
-                var lfo = actx.createOscillator(); lfo.frequency.value = 0.05;
-                var lg = actx.createGain(); lg.gain.value = 220; lfo.connect(lg); lg.connect(filt.frequency); lfo.start();
-            }
-            function blip(freq, dur, vol, type) {
-                if (!actx || !soundOn) return;
-                var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
-                o.type = type || "square"; o.frequency.setValueAtTime(freq, t);
-                o.frequency.exponentialRampToValueAtTime(freq * 0.45, t + dur);
-                g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.005);
-                g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-                o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
-            }
-            window.addEventListener("xvi-step", function () { blip(380, 0.11, 0.05); });
-            window.addEventListener("xvi-orbit", function () { /* user is engaged */ }, { once: true });
-            function setSound(on) {
-                soundOn = on; if (on) initAudio();
-                if (actx && actx.state === "suspended") actx.resume();
-                if (master) master.gain.setTargetAtTime(on ? 0.5 : 0, actx.currentTime, 0.12);
-                soundBtn.classList.toggle("on", on);
-                soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-                try { localStorage.setItem("xvi-snd", on ? "on" : "off"); } catch (e) {}
-            }
-            soundBtn.addEventListener("click", function () { setSound(!soundOn); });
-
-            /* ---------- photo mode ---------- */
-            var photoBtn = document.getElementById("photoBtn"), photoOn = false;
-            function setPhoto(on) { photoOn = on; document.body.classList.toggle("photo", on); }
-            photoBtn.addEventListener("click", function () { setPhoto(true); });
-            window.addEventListener("pointerdown", function (e) {
-                if (photoOn) { setPhoto(false); e.stopPropagation(); e.preventDefault(); } // exit without also starting a camera drag
-            }, true);
-            window.addEventListener("keydown", function (e) {
-                if (e.key === "p" || e.key === "P") setPhoto(!photoOn);
-                if (e.key === "Escape" && photoOn) setPhoto(false);
-            });
         })();
     </script>
 </body>
