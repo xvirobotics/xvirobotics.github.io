@@ -16,6 +16,8 @@ function hash2(i, j) {
   var n = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
   return n - Math.floor(n);
 }
+function sstep(a, b, x) { x = Math.max(0, Math.min(1, (x - a) / (b - a))); return x * x * (3 - 2 * x); }
+var INTRO = 3.6; // seconds of on-rails establishing camera move
 
 /* ---------- procedural textures ---------- */
 function glowTexture(inner, outer) {
@@ -262,8 +264,8 @@ window.XVIMoonBase = function (canvas) {
   var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
   sky.add(stars);
 
-  var earth = new THREE.Mesh(new THREE.SphereGeometry(2.6, 48, 32), new THREE.MeshBasicMaterial({ map: earthTexture(), fog: false }));
-  earth.position.set(-30, 10, -92); // earthrise, fixed bearing in the lunar sky
+  var earth = new THREE.Mesh(new THREE.SphereGeometry(3.4, 48, 32), new THREE.MeshBasicMaterial({ map: earthTexture(), fog: false }));
+  earth.position.set(30, 15, 33); // hero Earthrise, set to the right of the base domes
   sky.add(earth);
   var earthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(120,170,255,0.5)', 'rgba(70,120,220,0.16)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   earthGlow.position.copy(earth.position);
@@ -344,7 +346,7 @@ window.XVIMoonBase = function (canvas) {
 
   /* ---------- the base (SpaceX-style render: domes + modules + ships) ---------- */
   var base = new THREE.Group();
-  base.position.set(10, terrainH(10, -40), -40); // fixed lunar-base landmark, seated on terrain
+  base.position.set(21, terrainH(21, 12), 12); // landmark ahead under the Earthrise, seated on terrain
   world.add(base);
 
   // landing pad
@@ -650,8 +652,12 @@ window.XVIMoonBase = function (canvas) {
     // virtual world pose, drive the gait by distance so the foot stays locked.
     // Reduced motion only disables the idle auto-cruise — the user can still
     // drive, and the robot still renders (it just doesn't move on its own).
-    var tgtSpd = inActive ? inFwd * MAXSPD : (reduce ? 0 : CRUISE);
-    var tgtTrn = inActive ? inTurn * MAXTRN : 0;
+    // intro: the robot holds an establishing beat, then eases into a gentle
+    // idle ARC (a slow circle) that keeps the base + Earthrise composed in view
+    // instead of cruising straight off into empty terrain
+    var cruiseRamp = Math.max(0, Math.min(1, (t - 1.6) / 1.8));
+    var tgtSpd = inActive ? inFwd * MAXSPD : (reduce ? 0 : CRUISE * cruiseRamp);
+    var tgtTrn = inActive ? inTurn * MAXTRN : (reduce ? 0 : 0.12 * cruiseRamp);
     spd += (tgtSpd - spd) * Math.min(1, dt * 4);
     trn += (tgtTrn - trn) * Math.min(1, dt * 6);
     heading += trn * dt;
@@ -706,12 +712,15 @@ window.XVIMoonBase = function (canvas) {
     camHeading += dh * Math.min(1, dt * 2.6);
     var tx = robot.position.x, ty = robotGY + lookY, tz = robot.position.z;
     var thc = camHeading + Math.PI + CAMSIDE + yaw; // behind + 3/4 offset + drag
-    var cp = Math.cos(pitch), spv = Math.sin(pitch);
+    // on-rails intro: ease from a wide, low, side angle into the chase pose
+    var ie = t < INTRO ? 1 - sstep(0, INTRO, t) : 0;
+    var idist = dist + ie * 5.2, ipitch = pitch - ie * 0.055, ithc = thc + ie * 1.35;
+    var cp = Math.cos(ipitch), spv = Math.sin(ipitch);
     // same trig basis as the robot's heading (cos->x, sin->z) so the camera
     // truly trails BEHIND the heading at every angle (not a mirrored one)
-    var cpx = tx + Math.cos(thc) * dist * cp;
-    var cpy = ty + 0.62 + spv * dist;
-    var cpz = tz + Math.sin(thc) * dist * cp;
+    var cpx = tx + Math.cos(ithc) * idist * cp;
+    var cpy = ty + 0.62 + spv * idist;
+    var cpz = tz + Math.sin(ithc) * idist * cp;
     var kf = camInit ? Math.min(1, dt * 7) : 1; // snap on the first frame
     camInit = true;
     camera.position.set(
