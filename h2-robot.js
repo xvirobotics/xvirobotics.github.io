@@ -3,6 +3,7 @@
    official unitree_ros H2 description; kinematics from vendor/h2-kinematics.json. */
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from './vendor/jsm/loaders/DRACOLoader.js';
 
 var TAU = Math.PI * 2;
 var DEG = Math.PI / 180;
@@ -14,6 +15,12 @@ function smooth(u) { return u * u * (3 - 2 * u); }
 
 export function createH2Robot() {
   var loader = new GLTFLoader();
+  // GLB is Draco-compressed (POSITION+indices) — decoder runs in a worker, off the
+  // main thread, and outputs clean float geometry (no KHR_mesh_quantization node
+  // transforms), so the rig-attach reset + computeVertexNormals below stay valid.
+  var draco = new DRACOLoader();
+  draco.setDecoderPath('vendor/jsm/libs/draco/gltf/');
+  loader.setDRACOLoader(draco);
   return Promise.all([
     new Promise(function (res, rej) { loader.load('vendor/h2.glb', res, undefined, rej); }),
     fetch('vendor/h2-kinematics.json').then(function (r) { return r.json(); })

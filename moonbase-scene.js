@@ -184,7 +184,9 @@ window.XVIMoonBase = function (canvas) {
   try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
   try { COARSE = window.matchMedia('(pointer: coarse)').matches; } catch (err) {}
   var DPR = window.devicePixelRatio || 1;
-  var MAXPR = COARSE ? 1.5 : 2; // dpr-3 phones don't need a 2x buffer
+  // cap the buffer well below native DPR — post-processing + grain hide it and
+  // it's the single biggest fragment-cost win (4x pixels at DPR2 is the lag)
+  var MAXPR = COARSE ? 1.25 : 1.6;
 
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: 'high-performance' });
   renderer.shadowMap.enabled = true;
@@ -200,7 +202,7 @@ window.XVIMoonBase = function (canvas) {
   var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 900);
 
   /* ---------- post-processing: bloom + filmic grade + ACES output ---------- */
-  var rtSamples = COARSE ? 0 : 4; // MSAA on desktop; rely on bloom softening on mobile
+  var rtSamples = COARSE ? 0 : 2; // light MSAA on desktop; bloom softens the rest
   var composer = new EffectComposer(renderer,
     new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: rtSamples }));
   composer.addPass(new RenderPass(scene, camera));
@@ -257,7 +259,7 @@ window.XVIMoonBase = function (canvas) {
   var sun = new THREE.DirectionalLight(0xfff3e2, 3.6);
   sun.position.set(14, 15, 13);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(COARSE ? 1024 : 2048, COARSE ? 1024 : 2048);
+  sun.shadow.mapSize.set(COARSE ? 1024 : 1536, COARSE ? 1024 : 1536);
   sun.shadow.camera.left = -9; sun.shadow.camera.right = 9;
   sun.shadow.camera.top = 9; sun.shadow.camera.bottom = -9;
   sun.shadow.camera.near = 2; sun.shadow.camera.far = 80;
@@ -335,7 +337,7 @@ window.XVIMoonBase = function (canvas) {
     return terrainH(gx, gz) * (1 - fx) * (1 - fz) + terrainH(gx + GSTEP, gz) * fx * (1 - fz)
          + terrainH(gx, gz + GSTEP) * (1 - fx) * fz + terrainH(gx + GSTEP, gz + GSTEP) * fx * fz;
   }
-  var regoNormal = makeRegolithNormal(256);
+  var regoNormal = makeRegolithNormal(160);
   regoNormal.repeat.set(90, 90); // fine regolith relief tiled across the terrain
   var terrainMat = new THREE.MeshStandardMaterial({
     color: 0x595b60, roughness: 1, metalness: 0, vertexColors: true,
@@ -685,6 +687,86 @@ window.XVIMoonBase = function (canvas) {
     prevPh = info.phase;
   }
 
+  /* ---------- collectible energy cores (the "coins") ---------- */
+  // Glowing rings scattered across the regolith; walk (or jump) through one to
+  // bank it. They live in the static `world` group at true world coords, so the
+  // collect test is just the horizontal distance to the walker's (px,pz).
+  var COIN_N = 14, COLLECT_R2 = 1.3 * 1.3;
+  var coinScore = 0;
+  var ringGeo = new THREE.TorusGeometry(0.30, 0.062, 8, 22);
+  var coreGeo = new THREE.OctahedronGeometry(0.13);
+  var matCoin = new THREE.MeshStandardMaterial({ color: 0x07222b, emissive: 0x7ee0ff, emissiveIntensity: 2.0, metalness: 0.3, roughness: 0.35 });
+  var coins = [];
+  function placeCoin(c, near, lead) {
+    // bias new cores ahead of the walker so the field keeps refilling in view;
+    // `lead` drops one dead-ahead and close, so a core is always in the opening shot
+    var a = lead ? heading : (near ? heading + (Math.random() - 0.5) * 2.4 : Math.random() * TAU);
+    var r = lead ? 7 : (near ? 6 + Math.random() * 4 : 13 + Math.random() * 22);
+    c.wx = px + Math.cos(a) * r;
+    c.wz = pz + Math.sin(a) * r;
+    c.high = !lead && Math.random() < 0.26;        // ~1 in 4 sits high — jump to reach it (never the lead/opening one)
+    c.baseY = sampledH(c.wx, c.wz) + (c.high ? 1.95 : 0.95);
+    c.phase = Math.random() * TAU;
+    c.popping = false; c.pt = 0;
+    c.ring.visible = true; c.core.visible = true;
+    c.glow.material.opacity = 0.85;
+    c.glow.scale.setScalar(1.1);
+    c.grp.scale.setScalar(1);
+    c.grp.position.set(c.wx, c.baseY, c.wz);
+    c.grp.visible = true;
+  }
+  for (i = 0; i < COIN_N; i++) {
+    var cg = new THREE.Group(), spinG = new THREE.Group();
+    cg.add(spinG);
+    var ringM = new THREE.Mesh(ringGeo, matCoin); spinG.add(ringM);
+    var coreM = new THREE.Mesh(coreGeo, matCoin); spinG.add(coreM);
+    var cglow = glowSprite(cyanGlowTex, 1.1); cg.add(cglow);
+    world.add(cg);
+    var coin = { grp: cg, spin: spinG, ring: ringM, core: coreM, glow: cglow, wx: 0, wz: 0, baseY: 0, phase: 0, high: false, popping: false, pt: 0 };
+    placeCoin(coin, i < 3, i === 0);   // first few spawn close & ahead; coin 0 dead-ahead for the opening shot
+    coins.push(coin);
+  }
+  function collectCoin(c) {
+    coinScore++;
+    c.popping = true; c.pt = 0;
+    c.ring.visible = false; c.core.visible = false;
+    try { window.dispatchEvent(new CustomEvent('xvi-coin', { detail: { score: coinScore } })); } catch (e) {}
+  }
+  var COINDBG = false; try { COINDBG = /coindbg/.test(location.search); } catch (e) {}
+  var dbgT = 0;
+  function updateCoins(dt, t) {
+    var reachTop = robotGY + 1.55 + jumpY;   // jumping lifts the whole body -> reaches the high cores
+    if (COINDBG) {
+      dbgT += dt;
+      if (dbgT > 1.2) {
+        dbgT = 0; var md = 1e9, mi = 0;
+        for (var q = 0; q < coins.length; q++) { var ax = coins[q].wx - px, az = coins[q].wz - pz, dd = ax * ax + az * az; if (dd < md) { md = dd; mi = q; } }
+        console.log('COINDBG px=' + px.toFixed(1) + ' pz=' + pz.toFixed(1) + ' gY=' + robotGY.toFixed(2) + ' score=' + coinScore + ' near#' + mi + ' d=' + Math.sqrt(md).toFixed(2) + ' baseY=' + coins[mi].baseY.toFixed(2) + ' reach=' + reachTop.toFixed(2) + ' vis=' + coins[mi].grp.visible);
+      }
+    }
+    for (var ci = 0; ci < coins.length; ci++) {
+      var c = coins[ci];
+      if (c.popping) {                        // collected: glow flashes out, then recycle
+        c.pt += dt;
+        var u = c.pt / 0.3;
+        c.glow.scale.setScalar(1.1 + u * 2.4);
+        c.glow.material.opacity = Math.max(0, 0.85 * (1 - u));
+        if (u >= 1) placeCoin(c, true);
+        continue;
+      }
+      if (!reduce) {
+        c.spin.rotation.y += dt * 1.9;
+        c.grp.position.y = c.baseY + Math.sin(t * 1.6 + c.phase) * 0.13;
+      }
+      var dx = c.wx - px, dz = c.wz - pz;
+      if (dx * dx + dz * dz < COLLECT_R2 && c.baseY <= reachTop && c.baseY >= robotGY - 0.5) {
+        collectCoin(c);
+      } else if (dx * dx + dz * dz > 46 * 46) {  // wandered far behind -> recycle ahead
+        placeCoin(c, true);
+      }
+    }
+  }
+
   var beaconPhase = 0;
 
   function frame(now) {
@@ -754,6 +836,7 @@ window.XVIMoonBase = function (canvas) {
     wrapRocks(px, pz);
 
     pose();
+    updateCoins(dt, t);
 
     // dust (rises and fades in world-local; stays on the ground as the robot moves on)
     for (var i = 0; i < dustPool.length; i++) {

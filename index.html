@@ -25,8 +25,9 @@
     <link rel="preload" href="vendor/fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="modulepreload" href="vendor/three.module.min.js">
     <link rel="modulepreload" href="vendor/three.core.min.js">
-    <link rel="preload" href="vendor/h2.glb" as="fetch">
-    <link rel="preload" href="vendor/h2-kinematics.json" as="fetch">
+    <link rel="preload" href="vendor/h2.glb" as="fetch" crossorigin>
+    <link rel="preload" href="vendor/h2-kinematics.json" as="fetch" crossorigin>
+    <link rel="preload" href="vendor/jsm/libs/draco/gltf/draco_decoder.wasm" as="fetch" crossorigin>
     <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
     </script>
@@ -440,10 +441,45 @@
         .drive-hint.gone { opacity: 0; pointer-events: none; }
         @keyframes hintPulse { 0%, 100% { box-shadow: 0 0 0 rgba(126,224,255,0); } 50% { box-shadow: 0 0 22px rgba(126,224,255,0.22); } }
 
+        /* energy-core score — reveals on first drive, pops on each pickup */
+        .score-hud {
+            position: absolute;
+            z-index: 6;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 14px 5px 11px;
+            border-radius: 999px;
+            border: 1px solid rgba(126, 224, 255, 0.3);
+            background: rgba(4, 7, 11, 0.5);
+            color: #7ee0ff;
+            font-family: 'IBM Plex Mono', 'Noto Sans SC', monospace;
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        .score-hud.show { opacity: 0.92; }
+        .score-hud svg { filter: drop-shadow(0 0 5px rgba(126, 224, 255, 0.7)); }
+        .score-hud .num { min-width: 1.1em; text-align: right; font-variant-numeric: tabular-nums; }
+        .score-hud.bump { animation: scoreBump 0.4s ease; }
+        @keyframes scoreBump {
+            0% { transform: translateX(-50%) scale(1); }
+            30% { transform: translateX(-50%) scale(1.3); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+
         /* photo mode: hide all overlays for a clean shareable frame */
         body.photo .nav, body.photo .hero, body.photo .footer,
         body.photo .joystick, body.photo .joy-toggle, body.photo .jump-btn,
-        body.photo .ctl-cluster, body.photo .drive-hint { opacity: 0; pointer-events: none; }
+        body.photo .ctl-cluster, body.photo .drive-hint, body.photo .score-hud { opacity: 0; pointer-events: none; }
         .photo-exit {
             position: absolute; z-index: 7; left: 50%; bottom: 30px; transform: translateX(-50%);
             padding: 7px 15px; border-radius: 999px; border: 1px solid rgba(126,224,255,0.28);
@@ -662,6 +698,13 @@
 
         <div class="drive-hint" id="driveHint" aria-hidden="true">
             <span data-lang-en>Drive the robot — joystick or WASD · Space to jump</span><span data-lang-cn>操控机器人 — 摇杆或 WASD · 空格跳跃</span>
+        </div>
+
+        <div class="score-hud" id="scoreHud" aria-hidden="true" title="Energy cores collected">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3.4" fill="currentColor" stroke="none"></circle>
+            </svg>
+            <span class="num" id="scoreVal">0</span>
         </div>
 
         <div class="joystick" id="joystick" aria-hidden="true">
@@ -895,7 +938,29 @@
                 o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
             }
             window.addEventListener("xvi-step", function () { blip(380, 0.11, 0.05); });
+            // bright two-note pickup chime (Mario-coin shaped), only if sound is on
+            function coinChime() {
+                if (!actx || !soundOn) return;
+                var t = actx.currentTime;
+                [[1175, 0, 0.08], [1568, 0.08, 0.2]].forEach(function (n) {
+                    var o = actx.createOscillator(), g = actx.createGain();
+                    o.type = "square"; o.frequency.setValueAtTime(n[0], t + n[1]);
+                    g.gain.setValueAtTime(0, t + n[1]); g.gain.linearRampToValueAtTime(0.07, t + n[1] + 0.005);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + n[1] + n[2]);
+                    o.connect(g); g.connect(master); o.start(t + n[1]); o.stop(t + n[1] + n[2] + 0.02);
+                });
+            }
             window.addEventListener("xvi-orbit", function () { /* user is engaged */ }, { once: true });
+
+            /* ---------- energy-core score HUD ---------- */
+            var scoreHud = document.getElementById("scoreHud"), scoreVal = document.getElementById("scoreVal");
+            window.addEventListener("xvi-orbit", function () { scoreHud.classList.add("show"); }); // reveal on first drive
+            window.addEventListener("xvi-coin", function (e) {
+                scoreHud.classList.add("show");
+                scoreVal.textContent = (e.detail && e.detail.score) || (parseInt(scoreVal.textContent, 10) + 1);
+                scoreHud.classList.remove("bump"); void scoreHud.offsetWidth; scoreHud.classList.add("bump"); // restart pop
+                coinChime();
+            });
             function setSound(on) {
                 soundOn = on; if (on) initAudio();
                 if (actx && actx.state === "suspended") actx.resume();
