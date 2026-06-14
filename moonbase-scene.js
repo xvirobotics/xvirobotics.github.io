@@ -90,6 +90,33 @@ function earthTexture() {
   return tex;
 }
 
+// tileable regolith normal map from wrapped value-noise fbm
+function makeRegolithNormal(size) {
+  function vnoise(x, y, cells) {
+    var fx = x / size * cells, fy = y / size * cells;
+    var x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    var sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    function v(i, j) { return hash2(((i % cells) + cells) % cells, ((j % cells) + cells) % cells); }
+    var a = v(x0, y0), b = v(x0 + 1, y0), c = v(x0, y0 + 1), d = v(x0 + 1, y0 + 1);
+    return (a * (1 - sx) + b * sx) * (1 - sy) + (c * (1 - sx) + d * sx) * sy;
+  }
+  function H(x, y) { return 0.55 * vnoise(x, y, 8) + 0.3 * vnoise(x, y, 18) + 0.15 * vnoise(x, y, 40); }
+  var cv = document.createElement('canvas'); cv.width = cv.height = size;
+  var g = cv.getContext('2d'), img = g.createImageData(size, size), d = img.data, st = 1.6;
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      var nx = (H(x - 1, y) - H(x + 1, y)) * st, ny = (H(x, y - 1) - H(x, y + 1)) * st, nz = 1;
+      var inv = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz), p = (y * size + x) * 4;
+      d[p] = (nx * inv * 0.5 + 0.5) * 255; d[p + 1] = (ny * inv * 0.5 + 0.5) * 255;
+      d[p + 2] = (nz * inv * 0.5 + 0.5) * 255; d[p + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  var t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
 /* ---------- terrain: gentle crater field, fully periodic in BOTH axes so a
    3x3 grid of identical tiles can stream around a free-roaming walker ---------- */
 var CELL = 11, NXC = 22, PER = NXC * CELL; // square period (~242m)
@@ -264,13 +291,33 @@ window.XVIMoonBase = function (canvas) {
   var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
   sky.add(stars);
 
-  var earth = new THREE.Mesh(new THREE.SphereGeometry(3.4, 48, 32), new THREE.MeshBasicMaterial({ map: earthTexture(), fog: false }));
-  earth.position.set(30, 15, 33); // hero Earthrise, set to the right of the base domes
+  // Earth: a lit planet (sun gives a real day/night terminator) with a glowing
+  // atmosphere rim — the hero celestial element
+  var EARTH_R = 4.2, earthPos = new THREE.Vector3(30, 15, 33);
+  var earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R, 64, 40),
+    new THREE.MeshStandardMaterial({ map: earthTexture(), roughness: 1, metalness: 0, emissive: 0x0a1a33, emissiveIntensity: 0.35, fog: false }));
+  earth.position.copy(earthPos);
   sky.add(earth);
-  var earthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(120,170,255,0.5)', 'rgba(70,120,220,0.16)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-  earthGlow.position.copy(earth.position);
-  earthGlow.scale.setScalar(8);
+  // atmosphere: additive Fresnel limb glow on a slightly larger back-face shell
+  var atmo = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.07, 48, 32),
+    new THREE.ShaderMaterial({
+      transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: { uColor: { value: new THREE.Color(0x5aa0ff) } },
+      vertexShader: 'varying vec3 vN; varying vec3 vView; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vView = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying vec3 vN; varying vec3 vView; uniform vec3 uColor; void main(){ float f = pow(1.0 - max(dot(vN, vView), 0.0), 2.6); gl_FragColor = vec4(uColor * f * 1.6, f); }'
+    }));
+  atmo.position.copy(earthPos);
+  sky.add(atmo);
+  var earthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(120,170,255,0.45)', 'rgba(70,120,220,0.12)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  earthGlow.position.copy(earthPos);
+  earthGlow.scale.setScalar(10);
   sky.add(earthGlow);
+  // a small, contained sun (blooms via post) at the sun's direction
+  var sunDir = new THREE.Vector3(14, 15, 13).normalize();
+  var sunGlare = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,246,228,0.85)', 'rgba(255,205,150,0.16)'), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  sunGlare.position.copy(sunDir).multiplyScalar(360);
+  sunGlare.scale.setScalar(20);
+  sky.add(sunGlare);
 
   /* scrolling world */
   var world = new THREE.Group();
@@ -286,7 +333,12 @@ window.XVIMoonBase = function (canvas) {
     return terrainH(gx, gz) * (1 - fx) * (1 - fz) + terrainH(gx + GSTEP, gz) * fx * (1 - fz)
          + terrainH(gx, gz + GSTEP) * (1 - fx) * fz + terrainH(gx + GSTEP, gz + GSTEP) * fx * fz;
   }
-  var terrainMat = new THREE.MeshStandardMaterial({ color: 0x595b60, roughness: 1, metalness: 0, vertexColors: true });
+  var regoNormal = makeRegolithNormal(256);
+  regoNormal.repeat.set(90, 90); // fine regolith relief tiled across the terrain
+  var terrainMat = new THREE.MeshStandardMaterial({
+    color: 0x595b60, roughness: 1, metalness: 0, vertexColors: true,
+    normalMap: regoNormal, normalScale: new THREE.Vector2(0.85, 0.85)
+  });
   var tiles = [];
   for (var ti = -1; ti <= 1; ti++) {
     for (var tj = -1; tj <= 1; tj++) {
